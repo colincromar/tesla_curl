@@ -25,7 +25,9 @@ defmodule Tesla.Middleware.CurlTest do
     end
 
     test "is successful" do
-      assert {:ok, _} = call()
+      capture_log(fn ->
+        assert {:ok, _} = call()
+      end)
     end
   end
 end
