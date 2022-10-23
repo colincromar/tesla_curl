@@ -6,7 +6,7 @@ defmodule Tesla.Middleware.CurlTest do
   def call() do
     Tesla.Middleware.Curl.call(
       %Tesla.Env{
-        method: "GET",
+        method: :get,
         url: "https://example.com",
         headers: [{"Content-Type", "application/json"}],
         body: [{"foo", "bar"}]

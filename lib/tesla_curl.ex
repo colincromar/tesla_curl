@@ -27,15 +27,10 @@ defmodule Tesla.Middleware.Curl do
     env
   end
 
-  @spec normalize_method(atom | String.t()) :: String.t()
+  @spec normalize_method(atom) :: String.t()
   defp normalize_method(method) when is_atom(method) do
     method
     |> Atom.to_string()
-    |> String.upcase()
-  end
-
-  defp normalize_method(method) when is_binary(method) do
-    method
     |> String.upcase()
   end
 
