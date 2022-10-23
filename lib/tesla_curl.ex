@@ -31,11 +31,13 @@ defmodule Tesla.Middleware.Curl do
   defp parse_headers(headers, opts) do
     Enum.map(headers, fn {k, v} ->
       filter_header(k, v, opts)
-    end) |> Enum.join(" ")
+    end)
+    |> Enum.join(" ")
   end
 
   @spec filter_header(String.t(), String.t(), keyword() | nil) :: String.t()
   defp filter_header(key, value, nil), do: print_header(key, value, false)
+
   defp filter_header(key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
       fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
@@ -61,11 +63,13 @@ defmodule Tesla.Middleware.Curl do
   defp parse_body(body, opts) do
     Enum.map(body, fn {k, v} ->
       filter_body(k, v, opts)
-    end) |> Enum.join(" ")
+    end)
+    |> Enum.join(" ")
   end
 
   @spec filter_body(String.t(), String.t(), keyword() | nil) :: String.t()
   defp filter_body(key, value, nil), do: print_field(key, value, false)
+
   defp filter_body(key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
       fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)

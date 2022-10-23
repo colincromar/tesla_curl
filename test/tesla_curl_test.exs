@@ -38,7 +38,7 @@ defmodule Tesla.Middleware.CurlTest do
                    body: [{"foo", "bar"}, {"abc", "123"}]
                  },
                  [],
-                 [redact_fields: ["foo", "authorization"]]
+                 redact_fields: ["foo", "authorization"]
                )
              end) =~
                "curl --GET --header 'Authorization: [REDACTED]' --data-urlencode 'foo=[REDACTED]' --data-urlencode 'abc=123' https://example.com"
