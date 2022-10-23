@@ -35,6 +35,8 @@ defmodule HelloWorld do
 end
 ```
 
+If supplied, the redacted fields will be replaced with `[REDACTED]` in the curl command.
+
 ## License
 
 The source code is under the MIT License. Copyright (c) 2022- Colin Cromar.
