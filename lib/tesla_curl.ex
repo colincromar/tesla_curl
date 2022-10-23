@@ -24,6 +24,8 @@ defmodule Tesla.Middleware.Curl do
     headers = parse_headers(env.headers, opts)
     body = parse_body(env.body, opts)
 
+    # In general, concatenation, while not as pretty as interpolation, is a slightly more efficient
+    # due to less protocol overhead. As such, this library opts to use concatenation.
     Logger.info(
       "curl " <>
         "--" <>
