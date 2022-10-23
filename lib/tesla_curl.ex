@@ -20,8 +20,23 @@ defmodule Tesla.Middleware.Curl do
     Logger.info(
       "curl " <>
         "--" <>
-        env.method <> " " <> headers <> space(env.headers) <> body <> space(env.body) <> env.url
+        normalize_method(env.method) <>
+        " " <> headers <> space(env.headers) <> body <> space(env.body) <> env.url
     )
+
+    env
+  end
+
+  @spec normalize_method(atom | String.t()) :: String.t()
+  defp normalize_method(method) when is_atom(method) do
+    method
+    |> Atom.to_string()
+    |> String.upcase()
+  end
+
+  defp normalize_method(method) when is_binary(method) do
+    method
+    |> String.upcase()
   end
 
   @spec parse_headers(list()) :: String.t()
