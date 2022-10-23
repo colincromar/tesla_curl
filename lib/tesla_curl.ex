@@ -37,7 +37,7 @@ defmodule Tesla.Middleware.Curl do
   @spec filter_header(String.t(), String.t(), list()) :: String.t()
   defp filter_header(key, value, nil), do: print_header(key, value, false)
   defp filter_header(key, value, opts) do
-    with redact_fields <- Keyword.fetch!(opts, :redact_fields) do
+    with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
       fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
       print_header(key, value, Enum.member?(fields, String.downcase(key)))
     else
@@ -63,11 +63,6 @@ defmodule Tesla.Middleware.Curl do
       filter_body(k, v, opts)
     end) |> Enum.join(" ")
   end
-
-  # TODO - why does this function work with -
-  # with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-  # but the above one works with -
-  # with redact_fields <- Keyword.fetch!(opts, :redact_fields) do
 
   @spec filter_body(String.t(), String.t(), list()) :: String.t()
   defp filter_body(key, value, nil), do: print_field(key, value, false)

@@ -24,6 +24,17 @@ defmodule HelloWorld do
 end
 ```
 
+This middleware supports field redaction. You can pass a list of header keys or body field keys to be redacted in the options. 
+For example:
+
+```elixir
+defmodule HelloWorld do
+  use Tesla
+
+  plug Tesla.Middleware.Curl, redact_fields: ["api_token", "authorization", "password"]
+end
+```
+
 ## License
 
 The source code is under the MIT License. Copyright (c) 2022- Colin Cromar.
