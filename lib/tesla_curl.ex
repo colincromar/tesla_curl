@@ -75,7 +75,7 @@ defmodule Tesla.Middleware.Curl do
     end
   end
 
-  # @spec print_field(String.t(), String.t(), boolean()) :: String.t()
+  @spec print_field(String.t(), String.t(), boolean()) :: String.t()
   defp print_field(key, value, false) do
     "--data-urlencode '#{key}=#{value}'"
   end
