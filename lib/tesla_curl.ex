@@ -1,10 +1,16 @@
 defmodule Tesla.Middleware.Curl do
-  @moduledoc false
+  @moduledoc """
+  A middleware for the Tesla HTTP client that logs requests expressed in Curl.
+  """
 
   require Logger
 
   @behaviour Tesla.Middleware
 
+  @doc """
+  Serves as the main entrypoint to the middleware. Handles this middleware and calls
+  the next piece of middleware in the chain.
+  """
   @spec call(Tesla.Env.t(), Tesla.Env.stack(), keyword() | nil) :: Tesla.Env.result()
   def call(env, next, opts \\ []) do
     env
@@ -12,6 +18,7 @@ defmodule Tesla.Middleware.Curl do
     |> Tesla.run(next)
   end
 
+  # Calls parsing functions for headers and body, constructs the Curl command and logs it.
   @spec log_request(Tesla.Env.t(), keyword() | nil) :: :ok
   defp log_request(env, opts) do
     headers = parse_headers(env.headers, opts)
@@ -24,6 +31,7 @@ defmodule Tesla.Middleware.Curl do
     )
   end
 
+  # Top-level function to parse headers
   @spec parse_headers(list(), keyword() | nil) :: String.t()
   defp parse_headers(nil, _opts), do: ""
   defp parse_headers([], _opts), do: ""
@@ -35,6 +43,7 @@ defmodule Tesla.Middleware.Curl do
     |> Enum.join(" ")
   end
 
+  # Reads the redact_fields option to find fields to redact
   @spec filter_header(String.t(), String.t(), keyword() | nil) :: String.t()
   defp filter_header(key, value, nil), do: print_header(key, value, false)
 
@@ -47,6 +56,7 @@ defmodule Tesla.Middleware.Curl do
     end
   end
 
+  # Constructs the header string
   @spec print_header(String.t(), String.t(), boolean()) :: String.t()
   defp print_header(key, value, false) do
     "--header '#{key}: #{value}'"
@@ -56,6 +66,7 @@ defmodule Tesla.Middleware.Curl do
     "--header '#{key}: [REDACTED]'"
   end
 
+  # Top-level function to parse body
   @spec parse_body(list(), keyword() | nil) :: String.t()
   defp parse_body(nil, _opts), do: ""
   defp parse_body([], _opts), do: ""
@@ -67,6 +78,7 @@ defmodule Tesla.Middleware.Curl do
     |> Enum.join(" ")
   end
 
+  # Reads the redact_fields option to find body fields to redact
   @spec filter_body(String.t(), String.t(), keyword() | nil) :: String.t()
   defp filter_body(key, value, nil), do: print_field(key, value, false)
 
@@ -79,6 +91,7 @@ defmodule Tesla.Middleware.Curl do
     end
   end
 
+  # Constructs the body string
   @spec print_field(String.t(), String.t(), boolean()) :: String.t()
   defp print_field(key, value, false) do
     "--data-urlencode '#{key}=#{value}'"
