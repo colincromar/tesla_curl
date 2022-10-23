@@ -34,7 +34,7 @@ defmodule Tesla.Middleware.CurlTest do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(
                  %Tesla.Env{
-                   method: "GET",
+                   method: :get,
                    url: "https://example.com",
                    headers: [{"Authorization", "Bearer 123"}],
                    body: [{"foo", "bar"}, {"abc", "123"}]
