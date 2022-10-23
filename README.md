@@ -13,7 +13,7 @@ Add `:tesla_curl` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:tesla_curl, "~> 0.0.1"}
+    {:tesla_curl, git: "https://github.com/colincromar/tesla_curl.git", branch: "main"}
   ]
 end
 ```
