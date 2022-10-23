@@ -6,7 +6,7 @@ defmodule Tesla.Middleware.CurlTest do
   def call() do
     Tesla.Middleware.Curl.call(
       %Tesla.Env{
-        method: "GET",
+        method: :get,
         url: "https://example.com",
         headers: [{"Content-Type", "application/json"}],
         body: [{"foo", "bar"}]
@@ -25,7 +25,9 @@ defmodule Tesla.Middleware.CurlTest do
     end
 
     test "is successful" do
-      assert {:ok, _} = call()
+      capture_log(fn ->
+        assert {:ok, _} = call()
+      end)
     end
   end
 end
