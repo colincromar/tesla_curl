@@ -13,7 +13,7 @@ Add `:tesla_curl` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:tesla_curl, "~> 0.0.1"}
+    {:tesla_curl, git: "https://github.com/colincromar/tesla_curl.git", branch: "main"}
   ]
 end
 ```
@@ -27,6 +27,19 @@ defmodule HelloWorld do
   plug Tesla.Middleware.Curl
 end
 ```
+
+This middleware supports field redaction. You can pass a list of header keys or body field keys to be redacted in the options. 
+For example:
+
+```elixir
+defmodule HelloWorld do
+  use Tesla
+
+  plug Tesla.Middleware.Curl, redact_fields: ["api_token", "authorization", "password"]
+end
+```
+
+If supplied, the redacted fields will be replaced with `[REDACTED]` in the curl command.
 
 ## License
 

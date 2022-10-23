@@ -29,5 +29,21 @@ defmodule Tesla.Middleware.CurlTest do
         assert {:ok, _} = call()
       end)
     end
+
+    test "when body or headers are supplied with redact_fields, redacts those fields" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :get,
+                   url: "https://example.com",
+                   headers: [{"Authorization", "Bearer 123"}],
+                   body: [{"foo", "bar"}, {"abc", "123"}]
+                 },
+                 [],
+                 redact_fields: ["foo", "authorization"]
+               )
+             end) =~
+               "curl --GET --header 'Authorization: [REDACTED]' --data-urlencode 'foo=[REDACTED]' --data-urlencode 'abc=123' https://example.com"
+    end
   end
 end
