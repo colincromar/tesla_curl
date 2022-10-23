@@ -69,11 +69,11 @@ defmodule Tesla.Middleware.Curl do
   # Constructs the header string
   @spec print_header(String.t(), String.t(), boolean()) :: String.t()
   defp print_header(key, value, false) do
-    "--header '#{key}: #{value}'"
+    "--header '" <> key <> ": " <> value <> "'"
   end
 
   defp print_header(key, _value, true) do
-    "--header '#{key}: [REDACTED]'"
+    "--header '" <> key <> ": [REDACTED]'"
   end
 
   # Top-level function to parse body
@@ -104,11 +104,11 @@ defmodule Tesla.Middleware.Curl do
   # Constructs the body string
   @spec print_field(String.t(), String.t(), boolean()) :: String.t()
   defp print_field(key, value, false) do
-    "--data-urlencode '#{key}=#{value}'"
+    "--data-urlencode '" <> key <> "=" <> value <> "'"
   end
 
   defp print_field(key, _value, true) do
-    "--data-urlencode '#{key}=[REDACTED]'"
+    "--data-urlencode '" <> key <> "=[REDACTED]'"
   end
 
   @spec space(list()) :: String.t()
