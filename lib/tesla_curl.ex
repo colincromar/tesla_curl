@@ -5,14 +5,14 @@ defmodule Tesla.Middleware.Curl do
 
   @behaviour Tesla.Middleware
 
-  @spec call(Tesla.Env.t(), Tesla.Env.stack(), list()) :: Tesla.Env.result()
+  @spec call(Tesla.Env.t(), Tesla.Env.stack(), keyword() | nil) :: Tesla.Env.result()
   def call(env, next, opts \\ []) do
     env
     |> log_request(opts)
     |> Tesla.run(next)
   end
 
-  @spec log_request(Tesla.Env.t(), list()) :: :ok
+  @spec log_request(Tesla.Env.t(), keyword() | nil) :: :ok
   defp log_request(env, opts) do
     headers = parse_headers(env.headers, opts)
     body = parse_body(env.body, opts)
@@ -24,7 +24,7 @@ defmodule Tesla.Middleware.Curl do
     )
   end
 
-  @spec parse_headers(list(), list()) :: String.t()
+  @spec parse_headers(list(), keyword() | nil) :: String.t()
   defp parse_headers(nil, _opts), do: ""
   defp parse_headers([], _opts), do: ""
 
@@ -34,7 +34,7 @@ defmodule Tesla.Middleware.Curl do
     end) |> Enum.join(" ")
   end
 
-  @spec filter_header(String.t(), String.t(), list()) :: String.t()
+  @spec filter_header(String.t(), String.t(), keyword() | nil) :: String.t()
   defp filter_header(key, value, nil), do: print_header(key, value, false)
   defp filter_header(key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
@@ -54,7 +54,7 @@ defmodule Tesla.Middleware.Curl do
     "--header '#{key}: [REDACTED]'"
   end
 
-  @spec parse_body(list(), list()) :: String.t()
+  @spec parse_body(list(), keyword() | nil) :: String.t()
   defp parse_body(nil, _opts), do: ""
   defp parse_body([], _opts), do: ""
 
@@ -64,7 +64,7 @@ defmodule Tesla.Middleware.Curl do
     end) |> Enum.join(" ")
   end
 
-  @spec filter_body(String.t(), String.t(), list()) :: String.t()
+  @spec filter_body(String.t(), String.t(), keyword() | nil) :: String.t()
   defp filter_body(key, value, nil), do: print_field(key, value, false)
   defp filter_body(key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
