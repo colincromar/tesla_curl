@@ -36,7 +36,10 @@ defmodule Tesla.Middleware.CurlTest do
                  %Tesla.Env{
                    method: :get,
                    url: "https://example.com",
-                   headers: [{"Authorization", "Bearer 123"}, {"Content-Type", "application/x-www-form-urlencoded"}],
+                   headers: [
+                     {"Authorization", "Bearer 123"},
+                     {"Content-Type", "application/x-www-form-urlencoded"}
+                   ],
                    body: [{"foo", "bar"}, {"abc", "123"}]
                  },
                  [],
