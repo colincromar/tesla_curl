@@ -8,7 +8,7 @@ defmodule Tesla.Middleware.CurlTest do
       %Tesla.Env{
         method: :get,
         url: "https://example.com",
-        headers: [{"Content-Type", "application/json"}],
+        headers: [{"Content-Type", "application/x-www-form-urlencoded"}],
         body: [{"foo", "bar"}]
       },
       [],
@@ -21,7 +21,7 @@ defmodule Tesla.Middleware.CurlTest do
       assert capture_log(fn ->
                call()
              end) =~
-               "curl --GET --header 'Content-Type: application/json' --data-urlencode 'foo=bar' https://example.com"
+               "curl --GET --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=bar' https://example.com"
     end
 
     test "is successful" do
@@ -36,14 +36,17 @@ defmodule Tesla.Middleware.CurlTest do
                  %Tesla.Env{
                    method: :get,
                    url: "https://example.com",
-                   headers: [{"Authorization", "Bearer 123"}],
+                   headers: [
+                     {"Authorization", "Bearer 123"},
+                     {"Content-Type", "application/x-www-form-urlencoded"}
+                   ],
                    body: [{"foo", "bar"}, {"abc", "123"}]
                  },
                  [],
                  redact_fields: ["foo", "authorization"]
                )
              end) =~
-               "curl --GET --header 'Authorization: [REDACTED]' --data-urlencode 'foo=[REDACTED]' --data-urlencode 'abc=123' https://example.com"
+               "curl --GET --header 'Authorization: [REDACTED]' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=[REDACTED]' --data-urlencode 'abc=123' https://example.com"
     end
   end
 end
