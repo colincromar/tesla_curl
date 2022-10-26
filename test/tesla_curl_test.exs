@@ -55,13 +55,13 @@ defmodule Tesla.Middleware.CurlTest do
                  %Tesla.Env{
                    method: :get,
                    url: "https://example.com",
-                   query: [param1: "Hello World", param2: "This is a param with spaces and *special* hars!"],
+                   query: [param1: "Hello World", param2: "This is a param with spaces and *special* chars!"],
                  },
                  [],
                  nil
                )
              end) =~
-               "curl --GET https://example.comparam1=Hello%20World&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20hars%21"
+               "curl --GET https://example.comparam1=Hello%20World&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21"
     end
   end
 end
