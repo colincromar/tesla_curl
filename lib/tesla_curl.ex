@@ -43,7 +43,7 @@ defmodule Tesla.Middleware.Curl do
 
     query_params = Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986)
 
-    "curl --#{normalize_method(env.method)} #{headers}#{space(env.headers)}#{body}#{space(env.body)}#{env.url}#{query_params}"
+    "curl --#{normalize_method(env.method)} #{headers}#{space(env.headers)}#{body}#{space(env.body)}#{env.url}?#{query_params}"
   end
 
   # Top-level function to parse headers

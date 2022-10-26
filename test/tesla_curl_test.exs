@@ -61,7 +61,7 @@ defmodule Tesla.Middleware.CurlTest do
                  nil
                )
              end) =~
-               "curl --GET https://example.comparam1=Hello%20World&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21"
+               "curl --GET https://example.com?param1=Hello%20World&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21"
     end
   end
 end
