@@ -48,5 +48,20 @@ defmodule Tesla.Middleware.CurlTest do
              end) =~
                "curl --GET --header 'Authorization: [REDACTED]' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=[REDACTED]' --data-urlencode 'abc=123' https://example.com"
     end
+
+    test "when env contains query parameters, they are url encoded" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :get,
+                   url: "https://example.com",
+                   query: [param1: "Hello World", param2: "This is a param with spaces and *special* chars!"],
+                 },
+                 [],
+                 nil
+               )
+             end) =~
+               "curl --GET https://example.com?param1=Hello%20World&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21"
+    end
   end
 end

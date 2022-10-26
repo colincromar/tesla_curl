@@ -28,12 +28,22 @@ defmodule Tesla.Middleware.Curl do
 
   # Calls parser functions and constructs the Curl command string.
   @spec construct_curl(Tesla.Env.t(), keyword()) :: String.t()
-  defp construct_curl(env, opts) do
+  defp construct_curl(%Tesla.Env{query: []} = env, opts) do
     flag_type = get_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
     body = parse_body(env.body, flag_type, opts)
 
     "curl --#{normalize_method(env.method)} #{headers}#{space(env.headers)}#{body}#{space(env.body)}#{env.url}"
+  end
+
+  defp construct_curl(%Tesla.Env{} = env, opts) do
+    flag_type = get_flag_type(env.headers)
+    headers = parse_headers(env.headers, opts)
+    body = parse_body(env.body, flag_type, opts)
+
+    query_params = Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986)
+
+    "curl --#{normalize_method(env.method)} #{headers}#{space(env.headers)}#{body}#{space(env.body)}#{env.url}?#{query_params}"
   end
 
   # Top-level function to parse headers
