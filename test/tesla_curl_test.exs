@@ -21,7 +21,7 @@ defmodule Tesla.Middleware.CurlTest do
       method: :post,
       url: "https://example.com/hello",
       query: [],
-      headers: [],
+      headers: [{"Authorization", "Bearer 123"}, {"Content-Type", "multipart/form-data"}],
       body: %Tesla.Multipart{
         parts: [
           %Tesla.Multipart.Part{
@@ -125,7 +125,7 @@ defmodule Tesla.Middleware.CurlTest do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(multipart_env(), [], nil)
              end) =~
-               "curl --POST --header 'Content-Type: multipart/form-data --form field1=foo --form field2=bar " <>
+               "curl --POST --header 'Authorization: Bearer 123' --header 'Content-Type: multipart/form-data' --form field1=foo --form field2=bar " <>
                  "--form file=@test/tesla/tesla_curl_test.exs --form foobar=@test/tesla/test_helper.exs " <>
                  "https://example.com/hello"
     end
