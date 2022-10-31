@@ -26,7 +26,6 @@ defmodule Tesla.Middleware.Curl do
     env
   end
 
-
   # Parses the body parts of multipart requests into Curl format.
   @spec parse_part(%Tesla.Multipart.Part{}) :: String.t()
   defp parse_part(%Tesla.Multipart.Part{body: %File.Stream{}} = part) do
@@ -44,6 +43,7 @@ defmodule Tesla.Middleware.Curl do
   defp construct_curl(%Tesla.Env{body: %Tesla.Multipart{}} = env, opts) do
     headers = parse_headers(env.headers, opts)
     query_params = Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986)
+
     parsed_parts =
       Enum.map(env.body.parts, fn part ->
         parse_part(part)
