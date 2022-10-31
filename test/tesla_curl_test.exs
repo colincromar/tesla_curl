@@ -1,8 +1,6 @@
 defmodule Tesla.Middleware.CurlTest do
   use ExUnit.Case
 
-  alias Tesla.Multipart
-
   import ExUnit.CaptureLog
   import Tesla.Mock
 
@@ -58,7 +56,10 @@ defmodule Tesla.Middleware.CurlTest do
                  %Tesla.Env{
                    method: :get,
                    url: "https://example.com",
-                   query: [param1: "Hello World", param2: "This is a param with spaces and *special* chars!"],
+                   query: [
+                     param1: "Hello World",
+                     param2: "This is a param with spaces and *special* chars!"
+                   ]
                  },
                  [],
                  nil
@@ -68,50 +69,86 @@ defmodule Tesla.Middleware.CurlTest do
     end
   end
 
-  # describe "multipart" do
-  #   setup do
-  #     mock(fn
-  #       %{method: :get, url: "https://example.com/hello"} ->
-  #         %Tesla.Env{status: 200, body: "hello"}
+  describe "multipart" do
+    setup do
+      mock(fn
+        %{method: :post, url: "https://example.com/hello"} ->
+          %Tesla.Env{status: 200, body: "hello"}
+      end)
 
-  #       %{method: :post, url: "https://example.com/world"} ->
-  #         %Tesla.Env{status: 200, body: "hello"}
-  #     end)
+      :ok
+    end
 
-  #     :ok
-  #   end
+    def client() do
+      [
+        Tesla.Middleware.Curl
+      ]
+      |> Tesla.client()
+    end
 
-  #   def client() do
-  #     middleware = [
-  #       {Tesla.Middleware.BaseUrl, "https://api.github.com"},
-  #       Tesla.Middleware.JSON,
-  #       Tesla.Middleware.Curl,
-  #     ]
+    def multipart_env() do
+      %Tesla.Env{
+        method: :post,
+        url: "https://example.com/hello",
+        query: [],
+        headers: [],
+        body: %Tesla.Multipart{
+          parts: [
+            %Tesla.Multipart.Part{
+              body: "foo",
+              dispositions: [name: "field1"],
+              headers: []
+            },
+            %Tesla.Multipart.Part{
+              body: "bar",
+              dispositions: [name: "field2"],
+              headers: [{"content-id", "1"}, {"content-type", "text/plain"}]
+            },
+            %Tesla.Multipart.Part{
+              body: %File.Stream{
+                path: "test/tesla/tesla_curl_test.exs",
+                modes: [:raw, :read_ahead, :binary],
+                line_or_bytes: 2048,
+                raw: true
+              },
+              dispositions: [name: "file", filename: "tesla_curl_test.exs"],
+              headers: []
+            },
+            %Tesla.Multipart.Part{
+              body: %File.Stream{
+                path: "test/tesla/test_helper.exs",
+                modes: [:raw, :read_ahead, :binary],
+                line_or_bytes: 2048,
+                raw: true
+              },
+              dispositions: [name: "foobar", filename: "test_helper.exs"],
+              headers: []
+            }
+          ],
+          boundary: "4cb14c1c18ef9eb8f141d7d394cb9208",
+          content_type_params: ["charset=utf-8"]
+        },
+        status: nil,
+        opts: [],
+        __module__: Tesla,
+        __client__: %Tesla.Client{
+          fun: nil,
+          pre: [{Tesla.Middleware.Curl, :call, [[]]}],
+          post: [],
+          adapter: nil
+        }
+      }
+    end
 
-  #     Tesla.client(middleware)
-  #   end
+    test "multipart" do
+      env = multipart_env()
 
-    # This test currently just hangs
-    # Something tells me that the "--form file=sample file content" isn't working either
-    # test "handles multipart requests" do
-    #   mp =
-    #     Multipart.new()
-    #     |> Multipart.add_content_type_param("charset=utf-8")
-    #     |> Multipart.add_field("field1", "foo")
-    #     |> Multipart.add_field("field2", "bar",
-    #       headers: [{"content-id", "1"}, {"content-type", "text/plain"}]
-    #     )
-    #     |> Multipart.add_file("test/tesla/tesla_curl_test.exs")
-    #     |> Multipart.add_file("test/tesla/test_helper.exs", name: "foobar")
-    #     |> Multipart.add_file_content("sample file content", "sample.txt")
-
-    #     clnt = client()
-
-    #     assert capture_log(fn ->
-    #       Tesla.post(clnt, "https://example.com/world", mp)
-    #     end) =~ "curl --POST --header 'Content-Type: multipart/form-data --form field1=foo  --form field2=bar  " <>
-    #               <> "--form file=@test/tesla/tesla_curl_test.exs  --form foobar=@test/tesla/test_helper.exs  " <>
-    #               "--form file=sample file content https://example.com/world"
-    # end
-  # end
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(env, [], nil)
+             end) =~
+               "curl --POST --header 'Content-Type: multipart/form-data --form field1=foo --form field2=bar " <>
+                 "--form file=@test/tesla/tesla_curl_test.exs --form foobar=@test/tesla/test_helper.exs " <>
+                 "https://example.com/hello"
+    end
+  end
 end
