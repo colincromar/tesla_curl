@@ -43,31 +43,23 @@ defmodule Tesla.Middleware.Curl do
   @spec construct_curl(Tesla.Env.t(), keyword()) :: String.t()
   defp construct_curl(%Tesla.Env{body: %Tesla.Multipart{}} = env, opts) do
     headers = parse_headers(env.headers, opts)
+    query_params = Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986)
     parsed_parts =
       Enum.map(env.body.parts, fn part ->
         parse_part(part)
       end)
       |> Enum.join(" ")
 
-    "curl --POST #{headers}#{space(env.headers)}#{parsed_parts} #{env.url}"
-  end
-
-  defp construct_curl(%Tesla.Env{query: []} = env, opts) do
-    flag_type = get_flag_type(env.headers)
-    headers = parse_headers(env.headers, opts)
-    body = parse_body(env.body, flag_type, opts)
-
-    "curl --#{normalize_method(env.method)} #{headers}#{space(env.headers)}#{body}#{space(env.body)}#{env.url}"
+    "curl --POST #{headers}#{space(env.headers)}#{parsed_parts} #{env.url}#{format_query_params(query_params)}"
   end
 
   defp construct_curl(%Tesla.Env{} = env, opts) do
     flag_type = get_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
     body = parse_body(env.body, flag_type, opts)
-
     query_params = Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986)
 
-    "curl --#{normalize_method(env.method)} #{headers}#{space(env.headers)}#{body}#{space(env.body)}#{env.url}?#{query_params}"
+    "curl --#{normalize_method(env.method)} #{headers}#{space(env.headers)}#{body}#{space(env.body)}#{env.url}#{format_query_params(query_params)}"
   end
 
   # Top-level function to parse headers
@@ -165,4 +157,9 @@ defmodule Tesla.Middleware.Curl do
   defp space(nil), do: ""
   defp space([]), do: ""
   defp space(env_list) when length(env_list) > 0, do: " "
+
+  # Returns either an empty string or a query string to append to the URL
+  @spec format_query_params(String.t()) :: String.t()
+  defp format_query_params(""), do: ""
+  defp format_query_params(query_params), do: "?#{query_params}"
 end
