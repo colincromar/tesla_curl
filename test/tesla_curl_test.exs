@@ -129,5 +129,14 @@ defmodule Tesla.Middleware.CurlTest do
                  "--form file=@test/tesla/tesla_curl_test.exs --form foobar=@test/tesla/test_helper.exs " <>
                  "https://example.com/hello"
     end
+
+    test "multipart with redacted fields" do
+      assert capture_log(fn ->
+        Tesla.Middleware.Curl.call(multipart_env(), [], redact_fields: ["Authorization"])
+      end) =~
+        "curl --POST --header 'Authorization: [REDACTED]' --header 'Content-Type: multipart/form-data' --form field1=foo --form field2=bar " <>
+          "--form file=@test/tesla/tesla_curl_test.exs --form foobar=@test/tesla/test_helper.exs " <>
+          "https://example.com/hello"
+    end
   end
 end
