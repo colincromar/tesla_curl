@@ -26,8 +26,26 @@ defmodule Tesla.Middleware.Curl do
     env
   end
 
+  defp parse_part(%Tesla.Multipart.Part{body: %File.Stream{}} = part) do
+    {_, field} = List.first(part.dispositions)
+    " --form #{field}=@#{part.body.path} "
+  end
+
+  defp parse_part(%Tesla.Multipart.Part{} = part) do
+    {_, field} = List.first(part.dispositions)
+    " --form #{field}=#{part.body} "
+  end
+
   # Calls parser functions and constructs the Curl command string.
   @spec construct_curl(Tesla.Env.t(), keyword()) :: String.t()
+  defp construct_curl(%Tesla.Env{body: %Tesla.Multipart{}} = mp, _opts) do
+    parsed_parts = Enum.map(mp.body.parts, fn part ->
+      parse_part(part)
+    end) |> Enum.join(" ")
+
+    "curl --POST --header 'Content-Type: multipart/form-data" <> parsed_parts <> mp.url
+  end
+
   defp construct_curl(%Tesla.Env{query: []} = env, opts) do
     flag_type = get_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
