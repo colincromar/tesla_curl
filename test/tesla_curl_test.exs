@@ -16,6 +16,60 @@ defmodule Tesla.Middleware.CurlTest do
     )
   end
 
+  def multipart_env() do
+    %Tesla.Env{
+      method: :post,
+      url: "https://example.com/hello",
+      query: [],
+      headers: [{"Authorization", "Bearer 123"}, {"Content-Type", "multipart/form-data"}],
+      body: %Tesla.Multipart{
+        parts: [
+          %Tesla.Multipart.Part{
+            body: "foo",
+            dispositions: [name: "field1"],
+            headers: []
+          },
+          %Tesla.Multipart.Part{
+            body: "bar",
+            dispositions: [name: "field2"],
+            headers: [{"content-id", "1"}, {"content-type", "text/plain"}]
+          },
+          %Tesla.Multipart.Part{
+            body: %File.Stream{
+              path: "test/tesla/tesla_curl_test.exs",
+              modes: [:raw, :read_ahead, :binary],
+              line_or_bytes: 2048,
+              raw: true
+            },
+            dispositions: [name: "file", filename: "tesla_curl_test.exs"],
+            headers: []
+          },
+          %Tesla.Multipart.Part{
+            body: %File.Stream{
+              path: "test/tesla/test_helper.exs",
+              modes: [:raw, :read_ahead, :binary],
+              line_or_bytes: 2048,
+              raw: true
+            },
+            dispositions: [name: "foobar", filename: "test_helper.exs"],
+            headers: []
+          }
+        ],
+        boundary: "4cb14c1c18ef9eb8f141d7d394cb9208",
+        content_type_params: ["charset=utf-8"]
+      },
+      status: nil,
+      opts: [],
+      __module__: Tesla,
+      __client__: %Tesla.Client{
+        fun: nil,
+        pre: [{Tesla.Middleware.Curl, :call, [[]]}],
+        post: [],
+        adapter: nil
+      }
+    }
+  end
+
   describe "call/3" do
     test "formats curl requsts and logs them" do
       assert capture_log(fn ->
@@ -55,13 +109,34 @@ defmodule Tesla.Middleware.CurlTest do
                  %Tesla.Env{
                    method: :get,
                    url: "https://example.com",
-                   query: [param1: "Hello World", param2: "This is a param with spaces and *special* chars!"],
+                   query: [
+                     param1: "Hello World",
+                     param2: "This is a param with spaces and *special* chars!"
+                   ]
                  },
                  [],
                  nil
                )
              end) =~
                "curl --GET https://example.com?param1=Hello%20World&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21"
+    end
+
+    test "multipart" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(multipart_env(), [], nil)
+             end) =~
+               "curl --POST --header 'Authorization: Bearer 123' --header 'Content-Type: multipart/form-data' --form field1=foo --form field2=bar " <>
+                 "--form file=@test/tesla/tesla_curl_test.exs --form foobar=@test/tesla/test_helper.exs " <>
+                 "https://example.com/hello"
+    end
+
+    test "multipart with redacted fields" do
+      assert capture_log(fn ->
+        Tesla.Middleware.Curl.call(multipart_env(), [], redact_fields: ["Authorization"])
+      end) =~
+        "curl --POST --header 'Authorization: [REDACTED]' --header 'Content-Type: multipart/form-data' --form field1=foo --form field2=bar " <>
+          "--form file=@test/tesla/tesla_curl_test.exs --form foobar=@test/tesla/test_helper.exs " <>
+          "https://example.com/hello"
     end
   end
 end
