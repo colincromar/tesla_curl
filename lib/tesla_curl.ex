@@ -26,7 +26,11 @@ defmodule Tesla.Middleware.Curl do
     env
   end
 
+
+  # Parses the body parts of multipart requests into Curl format.
+  @spec parse_part(%Tesla.Multipart.Part{}) :: String.t()
   defp parse_part(%Tesla.Multipart.Part{body: %File.Stream{}} = part) do
+    require IEx; IEx.pry
     {_, field} = List.first(part.dispositions)
     "--form #{field}=@#{part.body.path}"
   end
