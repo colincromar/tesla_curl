@@ -184,6 +184,7 @@ defmodule Tesla.Middleware.Curl do
     end
   end
 
+  @spec set_location_flag(boolean()) :: String.t()
   def set_location_flag(true), do: "-L "
   def set_location_flag(_), do: ""
 
