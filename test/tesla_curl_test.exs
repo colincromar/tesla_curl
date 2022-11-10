@@ -75,7 +75,7 @@ defmodule Tesla.Middleware.CurlTest do
       assert capture_log(fn ->
                call()
              end) =~
-               "curl --GET --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=bar' https://example.com"
+               "curl --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=bar' https://example.com"
     end
 
     test "is successful" do
@@ -100,7 +100,7 @@ defmodule Tesla.Middleware.CurlTest do
                  redact_fields: ["foo", "authorization"]
                )
              end) =~
-               "curl --GET --header 'Authorization: [REDACTED]' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=[REDACTED]' --data-urlencode 'abc=123' https://example.com"
+               "curl --header 'Authorization: [REDACTED]' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=[REDACTED]' --data-urlencode 'abc=123' https://example.com"
     end
 
     test "when env contains query parameters, they are url encoded" do
@@ -118,14 +118,14 @@ defmodule Tesla.Middleware.CurlTest do
                  nil
                )
              end) =~
-               "curl --GET https://example.com?param1=Hello%20World&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21"
+               "curl https://example.com?param1=Hello%20World&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21"
     end
 
     test "multipart" do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(multipart_env(), [], nil)
              end) =~
-               "curl --POST --header 'Authorization: Bearer 123' --header 'Content-Type: multipart/form-data' --form field1=foo --form field2=bar " <>
+               "curl -X POST --header 'Authorization: Bearer 123' --header 'Content-Type: multipart/form-data' --form field1=foo --form field2=bar " <>
                  "--form file=@test/tesla/tesla_curl_test.exs --form foobar=@test/tesla/test_helper.exs " <>
                  "https://example.com/hello"
     end
@@ -134,9 +134,25 @@ defmodule Tesla.Middleware.CurlTest do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(multipart_env(), [], redact_fields: ["Authorization"])
              end) =~
-               "curl --POST --header 'Authorization: [REDACTED]' --header 'Content-Type: multipart/form-data' --form field1=foo --form field2=bar " <>
+               "curl -X POST --header 'Authorization: [REDACTED]' --header 'Content-Type: multipart/form-data' --form field1=foo --form field2=bar " <>
                  "--form file=@test/tesla/tesla_curl_test.exs --form foobar=@test/tesla/test_helper.exs " <>
                  "https://example.com/hello"
+    end
+
+    test "raw body" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :post,
+                   url: "https://example.com",
+                   headers: [],
+                   body: "foo"
+                 },
+                 [],
+                 nil
+               )
+             end) =~
+               "curl -X POST --data 'foo' https://example.com"
     end
   end
 end

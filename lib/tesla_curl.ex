@@ -50,7 +50,22 @@ defmodule Tesla.Middleware.Curl do
       end)
       |> Enum.join(" ")
 
-    "curl --POST #{headers}#{space(env.headers)}#{parsed_parts} #{env.url}#{format_query_params(query_params)}"
+    "curl -X POST #{headers}#{space(env.headers)}#{parsed_parts} #{env.url}#{format_query_params(query_params)}"
+  end
+
+  defp construct_curl(%Tesla.Env{query: []} = env, opts) when is_binary(env.body) do
+    flag_type = get_flag_type(env.headers)
+    headers = parse_headers(env.headers, opts)
+
+    "curl #{normalize_method(env.method)}#{headers}#{space(env.headers)}#{flag_type} '#{env.body}' #{env.url}"
+  end
+
+  defp construct_curl(%Tesla.Env{} = env, opts) when is_binary(env.body) do
+    flag_type = get_flag_type(env.headers)
+    headers = parse_headers(env.headers, opts)
+    query_params = Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986)
+
+    "curl #{normalize_method(env.method)}#{headers}#{space(env.headers)}#{flag_type} #{env.body.data} #{env.url}#{format_query_params(query_params)}"
   end
 
   defp construct_curl(%Tesla.Env{} = env, opts) do
@@ -59,7 +74,7 @@ defmodule Tesla.Middleware.Curl do
     body = parse_body(env.body, flag_type, opts)
     query_params = Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986)
 
-    "curl --#{normalize_method(env.method)} #{headers}#{space(env.headers)}#{body}#{space(env.body)}#{env.url}#{format_query_params(query_params)}"
+    "curl #{normalize_method(env.method)}#{headers}#{space(env.headers)}#{body}#{space(env.body)}#{env.url}#{format_query_params(query_params)}"
   end
 
   # Top-level function to parse headers
@@ -146,10 +161,15 @@ defmodule Tesla.Middleware.Curl do
 
   # Converts method atom into a string.
   @spec normalize_method(atom) :: String.t()
+  defp normalize_method(:get), do: ""
+
   defp normalize_method(method) when is_atom(method) do
-    method
-    |> Atom.to_string()
-    |> String.upcase()
+    normalized =
+      method
+      |> Atom.to_string()
+      |> String.upcase()
+
+    "-X #{normalized} "
   end
 
   # Implements a space function to avoid adding a space when the header or body is empty
