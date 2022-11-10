@@ -173,10 +173,11 @@ defmodule Tesla.Middleware.Curl do
     "-X #{translated} "
   end
 
+  # Sets the location flag based on the follow_redirects option
   @spec location_flag(keyword()) :: String.t()
-  def location_flag(nil), do: ""
+  defp location_flag(nil), do: ""
 
-  def location_flag(opts) do
+  defp location_flag(opts) do
     with {:ok, follow_redirects} <- Keyword.fetch(opts, :follow_redirects) do
       (follow_redirects == true) |> set_location_flag()
     else
@@ -184,9 +185,10 @@ defmodule Tesla.Middleware.Curl do
     end
   end
 
+  # Returns a location flag based on boolean input
   @spec set_location_flag(boolean()) :: String.t()
-  def set_location_flag(true), do: "-L "
-  def set_location_flag(_), do: ""
+  defp set_location_flag(true), do: "-L "
+  defp set_location_flag(_), do: ""
 
   # Implements a space function to avoid adding a space when the header or body is empty
   @spec space(list()) :: String.t()
