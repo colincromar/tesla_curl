@@ -57,7 +57,7 @@ defmodule Tesla.Middleware.Curl do
     flag_type = get_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
 
-    "curl #{normalize_method(env.method)}#{headers}#{space(env.headers)}#{flag_type} '#{env.body}' #{env.url}"
+    "curl #{translate_method(env.method)}#{headers}#{space(env.headers)}#{flag_type} '#{env.body}' #{env.url}"
   end
 
   defp construct_curl(%Tesla.Env{} = env, opts) when is_binary(env.body) do
@@ -65,7 +65,7 @@ defmodule Tesla.Middleware.Curl do
     headers = parse_headers(env.headers, opts)
     query_params = Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986)
 
-    "curl #{normalize_method(env.method)}#{headers}#{space(env.headers)}#{flag_type} #{env.body.data} #{env.url}#{format_query_params(query_params)}"
+    "curl #{translate_method(env.method)}#{headers}#{space(env.headers)}#{flag_type} #{env.body.data} #{env.url}#{format_query_params(query_params)}"
   end
 
   defp construct_curl(%Tesla.Env{} = env, opts) do
@@ -74,7 +74,7 @@ defmodule Tesla.Middleware.Curl do
     body = parse_body(env.body, flag_type, opts)
     query_params = Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986)
 
-    "curl #{normalize_method(env.method)}#{headers}#{space(env.headers)}#{body}#{space(env.body)}#{env.url}#{format_query_params(query_params)}"
+    "curl #{translate_method(env.method)}#{headers}#{space(env.headers)}#{body}#{space(env.body)}#{env.url}#{format_query_params(query_params)}"
   end
 
   # Top-level function to parse headers
@@ -160,17 +160,17 @@ defmodule Tesla.Middleware.Curl do
   end
 
   # Converts method atom into a string and assigns proper flag prefixes
-  @spec normalize_method(atom) :: String.t()
-  defp normalize_method(:get), do: ""
-  defp normalize_method(:head), do: "-I "
+  @spec translate_method(atom) :: String.t()
+  defp translate_method(:get), do: ""
+  defp translate_method(:head), do: "-I "
 
-  defp normalize_method(method) when is_atom(method) do
-    normalized =
+  defp translate_method(method) when is_atom(method) do
+    translated =
       method
       |> Atom.to_string()
       |> String.upcase()
 
-    "-X #{normalized} "
+    "-X #{translated} "
   end
 
   # Implements a space function to avoid adding a space when the header or body is empty
