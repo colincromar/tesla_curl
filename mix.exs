@@ -33,7 +33,6 @@ defmodule TeslaCurl.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:jason, "~> 1.4"},
       {:tesla, "~> 1.4"}
     ]
   end
