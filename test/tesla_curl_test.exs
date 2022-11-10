@@ -121,7 +121,7 @@ defmodule Tesla.Middleware.CurlTest do
                "curl https://example.com?param1=Hello%20World&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21"
     end
 
-    test "multipart" do
+    test "multipart requests" do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(multipart_env(), [], nil)
              end) =~
@@ -139,7 +139,7 @@ defmodule Tesla.Middleware.CurlTest do
                  "https://example.com/hello"
     end
 
-    test "raw body" do
+    test "raw request bodies" do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(
                  %Tesla.Env{
@@ -153,6 +153,34 @@ defmodule Tesla.Middleware.CurlTest do
                )
              end) =~
                "curl -X POST --data 'foo' https://example.com"
+    end
+
+    test "head and get requests do not have an -X flag" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :head,
+                   url: "https://example.com",
+                   headers: []
+                 },
+                 [],
+                 nil
+               )
+             end) =~
+               "curl -I https://example.com"
+
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :get,
+                   url: "https://example.com",
+                   headers: []
+                 },
+                 [],
+                 nil
+               )
+             end) =~
+               "curl https://example.com"
     end
   end
 end

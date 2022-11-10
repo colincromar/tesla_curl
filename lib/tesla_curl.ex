@@ -159,9 +159,10 @@ defmodule Tesla.Middleware.Curl do
     end
   end
 
-  # Converts method atom into a string.
+  # Converts method atom into a string and assigns proper flag prefixes
   @spec normalize_method(atom) :: String.t()
   defp normalize_method(:get), do: ""
+  defp normalize_method(:head), do: "-I "
 
   defp normalize_method(method) when is_atom(method) do
     normalized =
