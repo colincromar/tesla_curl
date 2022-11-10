@@ -155,6 +155,21 @@ defmodule Tesla.Middleware.CurlTest do
                "curl -X POST --data 'foo' https://example.com"
     end
 
+    test "follow_redirects option" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :get,
+                   url: "https://example.com",
+                   headers: []
+                 },
+                 [],
+                 follow_redirects: true
+               )
+             end) =~
+               "curl -L https://example.com"
+    end
+
     test "head and get requests do not have an -X flag" do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(
