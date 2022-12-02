@@ -131,13 +131,13 @@ defmodule Tesla.Middleware.Curl do
 
   # Constructs the header string
   @spec construct_header_string(String.t(), String.t(), boolean()) :: String.t()
-  defp construct_header_string(key, value, false) do
-    "--header '#{key}: #{value}'"
-  end
+  defp construct_header_string(key, value, false), do: "--header '#{key}: #{value}'"
+  defp construct_header_string(key, _value, true), do: "--header '#{key}: [REDACTED]'"
 
-  defp construct_header_string(key, _value, true) do
-    "--header '#{key}: [REDACTED]'"
-  end
+  # Constructs the body string
+  @spec construct_field(String.t(), String.t(), String.t(), boolean()) :: String.t()
+  defp construct_field(flag_type, key, value, false), do: "#{flag_type} '#{key}=#{value}'"
+  defp construct_field(flag_type, key, _value, true), do: "#{flag_type} '#{key}=[REDACTED]'"
 
   # Top-level function to parse body
   @spec parse_body(list() | nil, String.t(), keyword() | nil) :: String.t()
@@ -156,16 +156,6 @@ defmodule Tesla.Middleware.Curl do
   @spec standardize_key(String.t() | atom()) :: String.t()
   defp standardize_key(key) when is_atom(key), do: Atom.to_string(key) |> String.downcase()
   defp standardize_key(key), do: key |> String.downcase()
-
-  # Constructs the body string
-  @spec construct_field(String.t(), String.t(), String.t(), boolean()) :: String.t()
-  defp construct_field(flag_type, key, value, false) do
-    "#{flag_type} '#{key}=#{value}'"
-  end
-
-  defp construct_field(flag_type, key, _value, true) do
-    "#{flag_type} '#{key}=[REDACTED]'"
-  end
 
   # Determines the flag type based on the content type header
   @spec set_flag_type(list()) :: String.t()
