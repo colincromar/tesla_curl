@@ -118,12 +118,12 @@ defmodule Tesla.Middleware.Curl do
 
   # Constructs the header string
   @spec construct_header_string(String.t(), String.t(), boolean()) :: String.t()
-  defp construct_header_string(key, value, false) do
-    "--header '#{key}: #{value}'"
-  end
-
   defp construct_header_string(key, _value, true) do
     "--header '#{key}: [REDACTED]'"
+  end
+
+  defp construct_header_string(key, value, false) do
+    "--header '#{key}: #{value}'"
   end
 
   # Top-level function to parse body
@@ -146,12 +146,16 @@ defmodule Tesla.Middleware.Curl do
 
   # Constructs the body string
   @spec construct_field(String.t(), String.t(), String.t(), boolean()) :: String.t()
-  defp construct_field(flag_type, key, value, false) do
-    "#{flag_type} '#{key}=#{value}'"
-  end
-
   defp construct_field(flag_type, key, _value, true) do
     "#{flag_type} '#{key}=[REDACTED]'"
+  end
+
+  defp construct_field("--data-urlencode" = flag_type, key, value, false) do
+    "#{flag_type} '#{key}=#{URI.encode(value)}'"
+  end
+
+  defp construct_field(flag_type, key, value, false) do
+    "#{flag_type} '#{key}=#{value}'"
   end
 
   # Determines the flag type based on the content type header
