@@ -142,10 +142,6 @@ defmodule Tesla.Middleware.Curl do
   defp construct_field(flag_type, key, value, false), do: "#{flag_type} '#{key}=#{value}'"
   defp construct_field(flag_type, key, _value, true), do: "#{flag_type} '#{key}=[REDACTED]'"
 
-  defp construct_header_string(key, value, false) do
-    "--header '#{key}: #{value}'"
-  end
-
   # Top-level function to parse body
   @spec parse_body(list() | nil, String.t(), keyword() | nil) :: String.t()
   defp parse_body(nil, _flag_type, _opts), do: ""
@@ -163,6 +159,11 @@ defmodule Tesla.Middleware.Curl do
   @spec standardize_key(String.t() | atom()) :: String.t()
   defp standardize_key(key) when is_atom(key), do: Atom.to_string(key) |> String.downcase()
   defp standardize_key(key), do: key |> String.downcase()
+
+  # URI encode raw string body, if needed.
+  @spec standardize_raw_body(String.t(), boolean()) :: String.t()
+  defp standardize_raw_body(body, true), do: URI.encode(body)
+  defp standardize_raw_body(body, false), do: body
 
   # Determines the flag type based on the content type header
   @spec set_flag_type(list()) :: String.t()
