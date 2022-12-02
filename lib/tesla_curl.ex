@@ -50,14 +50,14 @@ defmodule Tesla.Middleware.Curl do
       end)
       |> Enum.join(" ")
 
-    "curl -X POST #{headers}#{space(env.headers)}#{parsed_parts} #{env.url}#{format_query_params(query_params)}"
+    "curl -X POST #{headers}#{parsed_parts} #{env.url}#{format_query_params(query_params)}"
   end
 
   defp construct_curl(%Tesla.Env{query: []} = env, opts) when is_binary(env.body) do
     flag_type = get_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
 
-    "curl #{location_flag(opts)}#{translate_method(env.method)}#{headers}#{space(env.headers)}#{flag_type} '#{env.body}' #{env.url}"
+    "curl #{location_flag(opts)}#{translate_method(env.method)}#{headers}#{flag_type} '#{env.body}' #{env.url}"
   end
 
   defp construct_curl(%Tesla.Env{} = env, opts) when is_binary(env.body) do
@@ -65,7 +65,7 @@ defmodule Tesla.Middleware.Curl do
     headers = parse_headers(env.headers, opts)
     query_params = Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986)
 
-    "curl #{location_flag(opts)}#{translate_method(env.method)}#{headers}#{space(env.headers)}#{flag_type} #{env.body.data} #{env.url}#{format_query_params(query_params)}"
+    "curl #{location_flag(opts)}#{translate_method(env.method)}#{headers}#{flag_type} #{env.body.data} #{env.url}#{format_query_params(query_params)}"
   end
 
   defp construct_curl(%Tesla.Env{} = env, opts) do
@@ -74,7 +74,7 @@ defmodule Tesla.Middleware.Curl do
     body = parse_body(env.body, flag_type, opts)
     query_params = Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986)
 
-    "curl #{location_flag(opts)}#{translate_method(env.method)}#{headers}#{space(env.headers)}#{body}#{space(env.body)}#{env.url}#{format_query_params(query_params)}"
+    "curl #{location_flag(opts)}#{translate_method(env.method)}#{headers}#{body}#{env.url}#{format_query_params(query_params)}"
   end
 
   # Top-level function to parse headers
@@ -87,6 +87,7 @@ defmodule Tesla.Middleware.Curl do
       filter_header(k, v, opts)
     end)
     |> Enum.join(" ")
+    |> Kernel.<>(" ")
   end
 
   # Reads the redact_fields option to find fields to redact
@@ -122,6 +123,7 @@ defmodule Tesla.Middleware.Curl do
       filter_body(flag_type, k, v, opts)
     end)
     |> Enum.join(" ")
+    |> Kernel.<>(" ")
   end
 
   # Reads the redact_fields option to find body fields to redact
@@ -189,12 +191,6 @@ defmodule Tesla.Middleware.Curl do
   @spec set_location_flag(boolean()) :: String.t()
   defp set_location_flag(true), do: "-L "
   defp set_location_flag(_), do: ""
-
-  # Implements a space function to avoid adding a space when the header or body is empty
-  @spec space(list()) :: String.t()
-  defp space(nil), do: ""
-  defp space([]), do: ""
-  defp space(env_list) when length(env_list) > 0, do: " "
 
   # Returns either an empty string or a query string to append to the URL
   @spec format_query_params(String.t()) :: String.t()
