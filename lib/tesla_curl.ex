@@ -133,11 +133,17 @@ defmodule Tesla.Middleware.Curl do
   defp filter_body(flag_type, key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
       fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
-      construct_field(flag_type, key, value, Enum.member?(fields, String.downcase(key)))
+      key_string = standardize_keys(key)
+      construct_field(flag_type, key, value, Enum.member?(fields, String.downcase(key_string)))
     else
       _ -> construct_field(flag_type, key, value, false)
     end
   end
+
+  # Converts atom keys to strings if needed
+  @spec standardize_keys(String.t() | atom()) :: String.t()
+  defp standardize_keys(key) when is_atom(key), do: Atom.to_string(key)
+  defp standardize_keys(key), do: key
 
   # Constructs the body string
   @spec construct_field(String.t(), String.t(), String.t(), boolean()) :: String.t()
