@@ -42,7 +42,9 @@ defmodule Tesla.Middleware.Curl do
   @spec construct_curl(Tesla.Env.t(), keyword()) :: String.t()
   defp construct_curl(%Tesla.Env{body: %Tesla.Multipart{}} = env, opts) do
     headers = parse_headers(env.headers, opts)
-    query_params = Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986)
+
+    query_params =
+      Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986) |> format_query_params()
 
     parsed_parts =
       Enum.map(env.body.parts, fn part ->
@@ -50,31 +52,35 @@ defmodule Tesla.Middleware.Curl do
       end)
       |> Enum.join(" ")
 
-    "curl -X POST #{headers}#{parsed_parts} #{env.url}#{format_query_params(query_params)}"
+    "curl -X POST #{headers}#{parsed_parts} #{env.url}#{query_params}"
   end
 
   defp construct_curl(%Tesla.Env{query: []} = env, opts) when is_binary(env.body) do
-    flag_type = get_flag_type(env.headers)
+    flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
 
     "curl #{location_flag(opts)}#{translate_method(env.method)}#{headers}#{flag_type} '#{env.body}' #{env.url}"
   end
 
   defp construct_curl(%Tesla.Env{} = env, opts) when is_binary(env.body) do
-    flag_type = get_flag_type(env.headers)
+    flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
-    query_params = Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986)
 
-    "curl #{location_flag(opts)}#{translate_method(env.method)}#{headers}#{flag_type} #{env.body.data} #{env.url}#{format_query_params(query_params)}"
+    query_params =
+      Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986) |> format_query_params()
+
+    "curl #{location_flag(opts)}#{translate_method(env.method)}#{headers}#{flag_type} #{env.body.data} #{env.url}#{query_params}"
   end
 
   defp construct_curl(%Tesla.Env{} = env, opts) do
-    flag_type = get_flag_type(env.headers)
+    flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
     body = parse_body(env.body, flag_type, opts)
-    query_params = Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986)
 
-    "curl #{location_flag(opts)}#{translate_method(env.method)}#{headers}#{body}#{env.url}#{format_query_params(query_params)}"
+    query_params =
+      Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986) |> format_query_params()
+
+    "curl #{location_flag(opts)}#{translate_method(env.method)}#{headers}#{body}#{env.url}#{query_params}"
   end
 
   # Top-level function to parse headers
@@ -92,12 +98,13 @@ defmodule Tesla.Middleware.Curl do
 
   # Reads the redact_fields option to find body fields to redact
   @spec filter_body(String.t(), String.t(), String.t(), keyword() | nil) :: String.t()
-  defp filter_body(flag_type, key, value, nil), do: construct_field(flag_type, key, value, false)
+  defp filter_body(flag_type, key, value, nil),
+    do: construct_field(flag_type, standardize_key(key), value, false)
 
   defp filter_body(flag_type, key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
       fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
-      construct_field(flag_type, key, value, Enum.member?(fields, standardize_keys(key)))
+      construct_field(flag_type, key, value, Enum.member?(fields, standardize_key(key)))
     else
       _ -> construct_field(flag_type, key, value, false)
     end
@@ -140,9 +147,9 @@ defmodule Tesla.Middleware.Curl do
   end
 
   # Converts atom keys to strings if needed, then downcase them.
-  @spec standardize_keys(String.t() | atom()) :: String.t()
-  defp standardize_keys(key) when is_atom(key), do: Atom.to_string(key) |> String.downcase()
-  defp standardize_keys(key), do: key |> String.downcase()
+  @spec standardize_key(String.t() | atom()) :: String.t()
+  defp standardize_key(key) when is_atom(key), do: Atom.to_string(key) |> String.downcase()
+  defp standardize_key(key), do: key |> String.downcase()
 
   # Constructs the body string
   @spec construct_field(String.t(), String.t(), String.t(), boolean()) :: String.t()
@@ -155,8 +162,8 @@ defmodule Tesla.Middleware.Curl do
   end
 
   # Determines the flag type based on the content type header
-  @spec get_flag_type(list()) :: String.t()
-  defp get_flag_type(headers) do
+  @spec set_flag_type(list()) :: String.t()
+  defp set_flag_type(headers) do
     content_type = Enum.find(headers, fn {key, _val} -> key == "Content-Type" end)
 
     case content_type do
