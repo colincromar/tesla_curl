@@ -58,29 +58,35 @@ defmodule Tesla.Middleware.Curl do
   defp construct_curl(%Tesla.Env{query: []} = env, opts) when is_binary(env.body) do
     flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
+    location_flag = location_flag(opts)
+    method = translate_method(env.method)
 
-    "curl #{location_flag(opts)}#{translate_method(env.method)}#{headers}#{flag_type} '#{env.body}' #{env.url}"
+    "curl #{location_flag}#{method}#{headers}#{flag_type} '#{env.body}' #{env.url}"
   end
 
   defp construct_curl(%Tesla.Env{} = env, opts) when is_binary(env.body) do
     flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
+    location_flag = location_flag(opts)
+    method = translate_method(env.method)
 
     query_params =
       Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986) |> format_query_params()
 
-    "curl #{location_flag(opts)}#{translate_method(env.method)}#{headers}#{flag_type} #{env.body.data} #{env.url}#{query_params}"
+    "curl #{location_flag}#{method}#{headers}#{flag_type} #{env.body.data} #{env.url}#{query_params}"
   end
 
   defp construct_curl(%Tesla.Env{} = env, opts) do
     flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
     body = parse_body(env.body, flag_type, opts)
+    location_flag = location_flag(opts)
+    method = translate_method(env.method)
 
     query_params =
       Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986) |> format_query_params()
 
-    "curl #{location_flag(opts)}#{translate_method(env.method)}#{headers}#{body}#{env.url}#{query_params}"
+    "curl #{location_flag}#{method}#{headers}#{body}#{env.url}#{query_params}"
   end
 
   # Top-level function to parse headers
