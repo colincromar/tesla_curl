@@ -90,6 +90,19 @@ defmodule Tesla.Middleware.Curl do
     |> Kernel.<>(" ")
   end
 
+  # Reads the redact_fields option to find body fields to redact
+  @spec filter_body(String.t(), String.t(), String.t(), keyword() | nil) :: String.t()
+  defp filter_body(flag_type, key, value, nil), do: construct_field(flag_type, key, value, false)
+
+  defp filter_body(flag_type, key, value, opts) do
+    with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
+      fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
+      construct_field(flag_type, key, value, Enum.member?(fields, standardize_keys(key)))
+    else
+      _ -> construct_field(flag_type, key, value, false)
+    end
+  end
+
   # Reads the redact_fields option to find fields to redact
   @spec filter_header(String.t(), String.t(), keyword() | nil) :: String.t()
   defp filter_header(key, value, nil), do: construct_header_string(key, value, false)
@@ -126,18 +139,10 @@ defmodule Tesla.Middleware.Curl do
     |> Kernel.<>(" ")
   end
 
-  # Reads the redact_fields option to find body fields to redact
-  @spec filter_body(String.t(), String.t(), String.t(), keyword() | nil) :: String.t()
-  defp filter_body(flag_type, key, value, nil), do: construct_field(flag_type, key, value, false)
-
-  defp filter_body(flag_type, key, value, opts) do
-    with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
-      construct_field(flag_type, key, value, Enum.member?(fields, String.downcase(key)))
-    else
-      _ -> construct_field(flag_type, key, value, false)
-    end
-  end
+  # Converts atom keys to strings if needed, then downcase them.
+  @spec standardize_keys(String.t() | atom()) :: String.t()
+  defp standardize_keys(key) when is_atom(key), do: Atom.to_string(key) |> String.downcase()
+  defp standardize_keys(key), do: key |> String.downcase()
 
   # Constructs the body string
   @spec construct_field(String.t(), String.t(), String.t(), boolean()) :: String.t()
