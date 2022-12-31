@@ -22,6 +22,9 @@ defmodule HelloWorld do
 end
 ```
 
+Note - Plugs are executed in the order they are defined. As such, it is recommended you define TeslaCurl below other middlewares.
+For example, if the TeslaCurl plug is defined above the Headers middleware, headers will not be included in the curl log output.
+
 ## Options
 
 #### Field Redaction
