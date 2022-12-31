@@ -125,7 +125,7 @@ defmodule Tesla.Middleware.CurlTest do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(multipart_env(), [], nil)
              end) =~
-               "curl -X POST --header 'Authorization: Bearer 123' --header 'Content-Type: multipart/form-data' --form field1=foo --form field2=bar " <>
+               "curl POST --header 'Authorization: Bearer 123' --header 'Content-Type: multipart/form-data' --form field1=foo --form field2=bar " <>
                  "--form file=@test/tesla/tesla_curl_test.exs --form foobar=@test/tesla/test_helper.exs " <>
                  "https://example.com/hello"
     end
@@ -134,7 +134,7 @@ defmodule Tesla.Middleware.CurlTest do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(multipart_env(), [], redact_fields: ["Authorization"])
              end) =~
-               "curl -X POST --header 'Authorization: [REDACTED]' --header 'Content-Type: multipart/form-data' --form field1=foo --form field2=bar " <>
+               "curl POST --header 'Authorization: [REDACTED]' --header 'Content-Type: multipart/form-data' --form field1=foo --form field2=bar " <>
                  "--form file=@test/tesla/tesla_curl_test.exs --form foobar=@test/tesla/test_helper.exs " <>
                  "https://example.com/hello"
     end
@@ -152,7 +152,7 @@ defmodule Tesla.Middleware.CurlTest do
                  nil
                )
              end) =~
-               "curl -X POST --data 'foo' https://example.com"
+               "curl POST --data 'foo' https://example.com"
     end
 
     test "follow_redirects option" do
@@ -168,34 +168,6 @@ defmodule Tesla.Middleware.CurlTest do
                )
              end) =~
                "curl -L https://example.com"
-    end
-
-    test "head and get requests do not have an -X flag" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :head,
-                   url: "https://example.com",
-                   headers: []
-                 },
-                 [],
-                 nil
-               )
-             end) =~
-               "curl -I https://example.com"
-
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :get,
-                   url: "https://example.com",
-                   headers: []
-                 },
-                 [],
-                 nil
-               )
-             end) =~
-               "curl https://example.com"
     end
   end
 end
