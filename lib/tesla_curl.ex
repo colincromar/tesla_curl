@@ -52,7 +52,7 @@ defmodule Tesla.Middleware.Curl do
       end)
       |> Enum.join(" ")
 
-    "curl -X POST #{headers}#{parsed_parts} #{env.url}#{query_params}"
+    "curl POST #{headers}#{parsed_parts} #{env.url}#{query_params}"
   end
 
   defp construct_curl(%Tesla.Env{query: []} = env, opts) when is_binary(env.body) do
@@ -189,7 +189,7 @@ defmodule Tesla.Middleware.Curl do
       |> Atom.to_string()
       |> String.upcase()
 
-    "-X #{translated} "
+    "#{translated} "
   end
 
   # Sets the location flag based on the follow_redirects option
