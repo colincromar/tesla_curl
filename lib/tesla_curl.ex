@@ -61,7 +61,10 @@ defmodule Tesla.Middleware.Curl do
     location = location_flag(opts)
     method = translate_method(env.method)
 
-    "curl #{location}#{method}#{headers}#{flag_type} '#{env.body}' #{env.url}"
+    needs_url_encoding = headers =~ "application/x-www-form-urlencoded"
+    body = standardize_raw_body(env.body, needs_url_encoding)
+
+    "curl #{location}#{method}#{headers}#{flag_type} '#{body}' #{env.url}"
   end
 
   defp construct_curl(%Tesla.Env{} = env, opts) when is_binary(env.body) do
@@ -136,6 +139,7 @@ defmodule Tesla.Middleware.Curl do
 
   # Constructs the body string
   @spec construct_field(String.t(), String.t(), String.t(), boolean()) :: String.t()
+  defp construct_field("--data-urlencode" = flag_type, key, value, false), do: "#{flag_type} '#{key}=#{URI.encode(value)}'"
   defp construct_field(flag_type, key, value, false), do: "#{flag_type} '#{key}=#{value}'"
   defp construct_field(flag_type, key, _value, true), do: "#{flag_type} '#{key}=[REDACTED]'"
 
@@ -156,6 +160,11 @@ defmodule Tesla.Middleware.Curl do
   @spec standardize_key(String.t() | atom()) :: String.t()
   defp standardize_key(key) when is_atom(key), do: Atom.to_string(key) |> String.downcase()
   defp standardize_key(key), do: key |> String.downcase()
+
+  # URI encode raw string body, if needed.
+  @spec standardize_raw_body(String.t(), boolean()) :: String.t()
+  defp standardize_raw_body(body, true), do: URI.encode(body)
+  defp standardize_raw_body(body, false), do: body
 
   # Determines the flag type based on the content type header
   @spec set_flag_type(list()) :: String.t()
