@@ -156,10 +156,10 @@ defmodule Tesla.Middleware.Curl do
     |> Kernel.<>(" ")
   end
 
-  # Converts atom keys to strings if needed, then downcase them.
+  # Converts atom keys to strings if needed
   @spec standardize_key(String.t() | atom()) :: String.t()
-  defp standardize_key(key) when is_atom(key), do: Atom.to_string(key) |> String.downcase()
-  defp standardize_key(key), do: key |> String.downcase()
+  defp standardize_key(key) when is_atom(key), do: Atom.to_string(key)
+  defp standardize_key(key), do: key
 
   # URI encode raw string body, if needed.
   @spec standardize_raw_body(String.t(), boolean()) :: String.t()
