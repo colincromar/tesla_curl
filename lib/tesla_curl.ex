@@ -112,7 +112,7 @@ defmodule Tesla.Middleware.Curl do
 
   defp filter_body(flag_type, key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      is_redacted = Enum.any?(needs_redact(key, redact_fields), fn x -> x == true end)
+      is_redacted = Enum.any?(field_needs_redaction(key, redact_fields), fn x -> x == true end)
       construct_field(flag_type, key, value, is_redacted)
     else
       _ -> construct_field(flag_type, key, value, false)
@@ -120,8 +120,8 @@ defmodule Tesla.Middleware.Curl do
   end
 
   # Checks if the key matches any of the redact_fields, including ones found in nested maps or lists
-  @spec needs_redact(String.t(), list()) :: list()
-  defp needs_redact(key, redact_fields) do
+  @spec field_needs_redaction(String.t(), list()) :: list()
+  defp field_needs_redaction(key, redact_fields) do
     downcased_key = String.downcase(key)
     downcased_fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
     Enum.map(downcased_fields, fn field ->
