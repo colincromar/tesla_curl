@@ -112,18 +112,18 @@ defmodule Tesla.Middleware.Curl do
 
   defp filter_body(flag_type, key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      needs_redact = Enum.any?(body_match?(key, redact_fields), fn x -> x == true end)
-      construct_field(flag_type, key, value, needs_redact)
+      is_redacted = Enum.any?(needs_redact(key, redact_fields), fn x -> x == true end)
+      construct_field(flag_type, key, value, is_redacted)
     else
       _ -> construct_field(flag_type, key, value, false)
     end
   end
 
   # Checks if the key matches any of the redact_fields, including ones found in nested maps or lists
-  defp body_match?(key, redact_fields) do
+  @spec needs_redact(String.t(), list()) :: list()
+  defp needs_redact(key, redact_fields) do
     downcased_key = String.downcase(key)
     downcased_fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
-
     Enum.map(downcased_fields, fn field ->
       String.contains?(downcased_key, field) || String.contains?(downcased_key, "[#{field}]")
     end)
@@ -149,9 +149,7 @@ defmodule Tesla.Middleware.Curl do
 
   # Constructs the body string
   @spec construct_field(String.t(), String.t(), String.t(), boolean()) :: String.t()
-  defp construct_field("--data-urlencode" = flag_type, key, value, false),
-    do: "#{flag_type} '#{key}=#{URI.encode(value)}'"
-
+  defp construct_field("--data-urlencode" = flag_type, key, value, false), do: "#{flag_type} '#{key}=#{URI.encode(value)}'"
   defp construct_field(flag_type, key, value, false), do: "#{flag_type} '#{key}=#{value}'"
   defp construct_field(flag_type, key, _value, true), do: "#{flag_type} '#{key}=[REDACTED]'"
 
