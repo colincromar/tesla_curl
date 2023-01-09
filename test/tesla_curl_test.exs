@@ -212,7 +212,7 @@ defmodule Tesla.Middleware.CurlTest do
                  nil
                )
              end) =~
-               "curl -X POST --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=b%20a%20r' https://example.com"
+               "curl POST --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=b%20a%20r' https://example.com"
     end
   end
 end
