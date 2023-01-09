@@ -100,7 +100,8 @@ defmodule Tesla.Middleware.CurlTest do
                  redact_fields: ["foo", "authorization"]
                )
              end) =~
-               "curl --header 'Authorization: [REDACTED]' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=[REDACTED]' --data-urlencode 'abc=123' https://example.com"
+               "curl --header 'Authorization: [REDACTED]' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=[REDACTED]' " <>
+                "--data-urlencode 'abc=123' https://example.com"
     end
 
     test "when env contains query parameters, they are url encoded" do
@@ -168,6 +169,50 @@ defmodule Tesla.Middleware.CurlTest do
                )
              end) =~
                "curl -L https://example.com"
+    end
+
+    test "head and get requests do not have an -X flag" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :head,
+                   url: "https://example.com",
+                   headers: []
+                 },
+                 [],
+                 nil
+               )
+             end) =~
+               "curl -I https://example.com"
+
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :get,
+                   url: "https://example.com",
+                   headers: []
+                 },
+                 [],
+                 nil
+               )
+             end) =~
+               "curl https://example.com"
+    end
+
+    test "body is urlencoded when content type is application/x-www-form-urlencoded" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :post,
+                   url: "https://example.com",
+                   headers: [{"Content-Type", "application/x-www-form-urlencoded"}],
+                   body: "foo=b a r"
+                 },
+                 [],
+                 nil
+               )
+             end) =~
+               "curl POST --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=b%20a%20r' https://example.com"
     end
   end
 end
