@@ -112,11 +112,21 @@ defmodule Tesla.Middleware.Curl do
 
   defp filter_body(flag_type, key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
-      construct_field(flag_type, key, value, Enum.member?(fields, standardize_key(key)))
+      is_redacted = Enum.any?(field_needs_redaction(key, redact_fields), fn x -> x == true end)
+      construct_field(flag_type, key, value, is_redacted)
     else
       _ -> construct_field(flag_type, key, value, false)
     end
+  end
+
+  # Checks if the key matches any of the redact_fields, including ones found in nested maps or lists
+  @spec field_needs_redaction(String.t(), list()) :: list()
+  defp field_needs_redaction(key, redact_fields) do
+    downcased_key = String.downcase(key)
+    downcased_fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
+    Enum.map(downcased_fields, fn field ->
+      String.contains?(downcased_key, field) || String.contains?(downcased_key, "[#{field}]")
+    end)
   end
 
   # Reads the redact_fields option to find fields to redact
@@ -149,11 +159,34 @@ defmodule Tesla.Middleware.Curl do
   defp parse_body([], _flag_type, _opts), do: ""
 
   defp parse_body(body, flag_type, opts) do
-    Enum.map(body, fn {k, v} ->
-      filter_body(flag_type, k, v, opts)
+    Enum.flat_map(body, fn {k, v} ->
+      results = translate_value(k, v)
+      Enum.map(results, fn {key, value} -> filter_body(flag_type, key, value, opts) end)
     end)
     |> Enum.join(" ")
     |> Kernel.<>(" ")
+  end
+
+  # Recursively handles any nested maps or lists, returns a tuple containing the translated keys and values in string form.
+  @spec translate_value(String.t(), map() | list() | String.t()) :: [{String.t(), String.t()}]
+  def translate_value(key, value) when is_map(value) do
+    value
+    |> Map.to_list()
+    |> Enum.flat_map(fn {k, v} ->
+      translate_value("#{key}[#{k}]", v)
+    end)
+  end
+
+  def translate_value(key, value) when is_list(value) do
+    value
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {v, i} ->
+      translate_value("#{key}[#{i}]", v)
+    end)
+  end
+
+  def translate_value(key, value) do
+    [{key, value}]
   end
 
   # Converts atom keys to strings if needed

@@ -101,7 +101,7 @@ defmodule Tesla.Middleware.CurlTest do
                )
              end) =~
                "curl --header 'Authorization: [REDACTED]' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=[REDACTED]' " <>
-                "--data-urlencode 'abc=123' https://example.com"
+                 "--data-urlencode 'abc=123' https://example.com"
     end
 
     test "when env contains query parameters, they are url encoded" do
@@ -213,6 +213,31 @@ defmodule Tesla.Middleware.CurlTest do
                )
              end) =~
                "curl POST --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=b%20a%20r' https://example.com"
+    end
+
+    test "handles bodies with nested maps and lists" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :post,
+                   url: "https://example.com",
+                   headers: [{"Content-Type", "application/json"}],
+                   body: %{
+                     "foo" => "bar",
+                     "baz" => [
+                       %{"a" => "b"},
+                       %{"c" => "d"},
+                       %{"e" => %{"f" => "g"}},
+                       %{"h" => "i"}
+                     ]
+                   }
+                 },
+                 [],
+                 redact_fields: ["h", "authorization"]
+               )
+             end) =~
+               "curl POST --header 'Content-Type: application/json' --data 'baz[0][a]=b' --data 'baz[1][c]=d' " <>
+                 "--data 'baz[2][e][f]=g' --data 'baz[3][h]=[REDACTED]' --data 'foo=bar' https://example.com"
     end
   end
 end
