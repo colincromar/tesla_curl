@@ -123,6 +123,7 @@ defmodule Tesla.Middleware.Curl do
   defp body_match?(key, redact_fields) do
     downcased_key = String.downcase(key)
     downcased_fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
+
     Enum.map(downcased_fields, fn field ->
       String.contains?(downcased_key, field) || String.contains?(downcased_key, "[#{field}]")
     end)
@@ -148,7 +149,9 @@ defmodule Tesla.Middleware.Curl do
 
   # Constructs the body string
   @spec construct_field(String.t(), String.t(), String.t(), boolean()) :: String.t()
-  defp construct_field("--data-urlencode" = flag_type, key, value, false), do: "#{flag_type} '#{key}=#{URI.encode(value)}'"
+  defp construct_field("--data-urlencode" = flag_type, key, value, false),
+    do: "#{flag_type} '#{key}=#{URI.encode(value)}'"
+
   defp construct_field(flag_type, key, value, false), do: "#{flag_type} '#{key}=#{value}'"
   defp construct_field(flag_type, key, _value, true), do: "#{flag_type} '#{key}=[REDACTED]'"
 

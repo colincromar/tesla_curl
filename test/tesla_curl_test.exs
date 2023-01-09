@@ -236,8 +236,8 @@ defmodule Tesla.Middleware.CurlTest do
                  redact_fields: ["h", "authorization"]
                )
              end) =~
-              "curl POST --header 'Content-Type: application/json' --data 'baz[0][a]=b' --data 'baz[1][c]=d' " <>
-                "--data 'baz[2][e][f]=g' --data 'baz[3][h]=[REDACTED]' --data 'foo=bar' https://example.com"
+               "curl POST --header 'Content-Type: application/json' --data 'baz[0][a]=b' --data 'baz[1][c]=d' " <>
+                 "--data 'baz[2][e][f]=g' --data 'baz[3][h]=[REDACTED]' --data 'foo=bar' https://example.com"
     end
   end
 end
