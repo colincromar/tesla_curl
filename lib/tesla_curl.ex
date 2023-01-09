@@ -149,17 +149,38 @@ defmodule Tesla.Middleware.Curl do
   defp parse_body([], _flag_type, _opts), do: ""
 
   defp parse_body(body, flag_type, opts) do
-    Enum.map(body, fn {k, v} ->
-      filter_body(flag_type, k, v, opts)
+    Enum.flat_map(body, fn {k, v} ->
+      results = translate_value(k, v)
+      Enum.map(results, fn {key, value} -> filter_body(flag_type, key, value, opts) end)
     end)
     |> Enum.join(" ")
     |> Kernel.<>(" ")
   end
 
-  # Converts atom keys to strings if needed, then downcase them.
+  def translate_value(key, value) when is_map(value) do
+    value
+    |> Map.to_list()
+    |> Enum.flat_map(fn {k, v} ->
+      translate_value("#{key}[#{k}]", v)
+    end)
+  end
+
+  def translate_value(key, value) when is_list(value) do
+    value
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {v, i} ->
+      translate_value("#{key}[#{i}]", v)
+    end)
+  end
+
+  def translate_value(key, value) do
+    [{key, value}]
+  end
+
+  # Converts atom keys to strings if needed
   @spec standardize_key(String.t() | atom()) :: String.t()
-  defp standardize_key(key) when is_atom(key), do: Atom.to_string(key) |> String.downcase()
-  defp standardize_key(key), do: key |> String.downcase()
+  defp standardize_key(key) when is_atom(key), do: Atom.to_string(key)
+  defp standardize_key(key), do: key
 
   # URI encode raw string body, if needed.
   @spec standardize_raw_body(String.t(), boolean()) :: String.t()
