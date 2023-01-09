@@ -112,11 +112,20 @@ defmodule Tesla.Middleware.Curl do
 
   defp filter_body(flag_type, key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
-      construct_field(flag_type, key, value, Enum.member?(fields, standardize_key(key)))
+      needs_redact = Enum.any?(body_match?(key, redact_fields), fn x -> x == true end)
+      construct_field(flag_type, key, value, needs_redact)
     else
       _ -> construct_field(flag_type, key, value, false)
     end
+  end
+
+  # Checks if the key matches any of the redact_fields, including ones found in nested maps or lists
+  defp body_match?(key, redact_fields) do
+    downcased_key = String.downcase(key)
+    downcased_fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
+    Enum.map(downcased_fields, fn field ->
+      String.contains?(downcased_key, field) || String.contains?(downcased_key, "[#{field}]")
+    end)
   end
 
   # Reads the redact_fields option to find fields to redact
