@@ -177,6 +177,13 @@ defmodule Tesla.Middleware.Curl do
     end)
   end
 
+  defp translate_value(key, value) when is_tuple(value) do
+    value
+    |> Enum.flat_map(fn {k, v} ->
+      translate_value("#{key}[#{k}]", v)
+    end)
+  end
+
   defp translate_value(key, value) when is_list(value) do
     value
     |> Enum.with_index()
