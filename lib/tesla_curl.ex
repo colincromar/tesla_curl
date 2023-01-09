@@ -157,6 +157,8 @@ defmodule Tesla.Middleware.Curl do
     |> Kernel.<>(" ")
   end
 
+  # Recursively handles any nested maps or lists, returns a tuple containing the translated keys and values in string form.
+  @spec translate_value(String.t(), map() | list() | String.t()) :: [{String.t(), String.t()}]
   def translate_value(key, value) when is_map(value) do
     value
     |> Map.to_list()
