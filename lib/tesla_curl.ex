@@ -56,10 +56,10 @@ defmodule Tesla.Middleware.Curl do
   end
 
   defp construct_curl(%Tesla.Env{query: []} = env, opts) when is_binary(env.body) do
-    method = translate_method(env.method)
-    location = location_flag(opts)
     flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
+    location = location_flag(opts)
+    method = translate_method(env.method)
 
     needs_url_encoding = headers =~ "application/x-www-form-urlencoded"
     body = standardize_raw_body(env.body, needs_url_encoding)
@@ -68,10 +68,10 @@ defmodule Tesla.Middleware.Curl do
   end
 
   defp construct_curl(%Tesla.Env{} = env, opts) when is_binary(env.body) do
-    method = translate_method(env.method)
-    location = location_flag(opts)
     flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
+    location = location_flag(opts)
+    method = translate_method(env.method)
 
     query_params =
       Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986) |> format_query_params()
@@ -80,60 +80,17 @@ defmodule Tesla.Middleware.Curl do
   end
 
   defp construct_curl(%Tesla.Env{} = env, opts) do
-    method = translate_method(env.method)
-    location = location_flag(opts)
     flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
     body = parse_body(env.body, flag_type, opts)
+    location = location_flag(opts)
+    method = translate_method(env.method)
 
     query_params =
       Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986) |> format_query_params()
 
     "curl #{location}#{method}#{headers}#{body}#{env.url}#{query_params}"
   end
-
-  # Converts method atom into a string and assigns proper flag prefixes
-  @spec translate_method(atom) :: String.t()
-  defp translate_method(:get), do: ""
-  defp translate_method(:head), do: "-I "
-
-  defp translate_method(method) when is_atom(method) do
-    translated =
-      method
-      |> Atom.to_string()
-      |> String.upcase()
-
-    "#{translated} "
-  end
-
-  # Determines the flag type based on the content type header
-  @spec set_flag_type(list()) :: String.t()
-  defp set_flag_type(headers) do
-    content_type = Enum.find(headers, fn {key, _val} -> key == "Content-Type" end)
-
-    case content_type do
-      {"Content-Type", "application/x-www-form-urlencoded"} -> "--data-urlencode"
-      {"Content-Type", "multipart/form-data"} -> "--form"
-      _ -> "--data"
-    end
-  end
-
-  # Sets the location flag based on the follow_redirects option
-  @spec location_flag(keyword()) :: String.t()
-  defp location_flag(nil), do: ""
-
-  defp location_flag(opts) do
-    with {:ok, follow_redirects} <- Keyword.fetch(opts, :follow_redirects) do
-      (follow_redirects == true) |> set_location_flag()
-    else
-      _ -> ""
-    end
-  end
-
-  # Returns a location flag based on boolean input
-  @spec set_location_flag(boolean()) :: String.t()
-  defp set_location_flag(true), do: "-L "
-  defp set_location_flag(_), do: ""
 
   # Top-level function to parse headers
   @spec parse_headers(list(), keyword() | nil) :: String.t()
@@ -148,22 +105,8 @@ defmodule Tesla.Middleware.Curl do
     |> Kernel.<>(" ")
   end
 
-  # Top-level function to parse body
-  @spec parse_body(list() | nil, String.t(), keyword() | nil) :: String.t()
-  defp parse_body(nil, _flag_type, _opts), do: ""
-  defp parse_body([], _flag_type, _opts), do: ""
-
-  defp parse_body(body, flag_type, opts) do
-    Enum.flat_map(body, fn {k, v} ->
-      results = translate_value(k, v)
-      Enum.map(results, fn {key, value} -> filter_body(flag_type, key, value, opts) end)
-    end)
-    |> Enum.join(" ")
-    |> Kernel.<>(" ")
-  end
-
   # Reads the redact_fields option to find body fields to redact
-  @spec filter_body(String.t(), String.t() | atom(), String.t(), keyword() | nil) :: String.t()
+  @spec filter_body(String.t(), String.t(), String.t(), keyword() | nil) :: String.t()
   defp filter_body(flag_type, key, value, nil),
     do: construct_field(flag_type, standardize_key(key), value, false)
 
@@ -181,7 +124,6 @@ defmodule Tesla.Middleware.Curl do
   defp field_needs_redaction(key, redact_fields) do
     downcased_key = String.downcase(key)
     downcased_fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
-
     Enum.map(downcased_fields, fn field ->
       String.contains?(downcased_key, field) || String.contains?(downcased_key, "[#{field}]")
     end)
@@ -207,11 +149,23 @@ defmodule Tesla.Middleware.Curl do
 
   # Constructs the body string
   @spec construct_field(String.t(), String.t(), String.t(), boolean()) :: String.t()
-  defp construct_field("--data-urlencode" = flag_type, key, value, false),
-    do: "#{flag_type} '#{key}=#{URI.encode(value)}'"
-
+  defp construct_field("--data-urlencode" = flag_type, key, value, false), do: "#{flag_type} '#{key}=#{URI.encode(value)}'"
   defp construct_field(flag_type, key, value, false), do: "#{flag_type} '#{key}=#{value}'"
   defp construct_field(flag_type, key, _value, true), do: "#{flag_type} '#{key}=[REDACTED]'"
+
+  # Top-level function to parse body
+  @spec parse_body(list() | nil, String.t(), keyword() | nil) :: String.t()
+  defp parse_body(nil, _flag_type, _opts), do: ""
+  defp parse_body([], _flag_type, _opts), do: ""
+
+  defp parse_body(body, flag_type, opts) do
+    Enum.flat_map(body, fn {k, v} ->
+      results = translate_value(k, v)
+      Enum.map(results, fn {key, value} -> filter_body(flag_type, key, value, opts) end)
+    end)
+    |> Enum.join(" ")
+    |> Kernel.<>(" ")
+  end
 
   # Recursively handles any nested maps or lists, returns a tuple containing the translated keys and values in string form.
   @spec translate_value(String.t(), map() | list() | String.t()) :: [{String.t(), String.t()}]
@@ -244,6 +198,49 @@ defmodule Tesla.Middleware.Curl do
   @spec standardize_raw_body(String.t(), boolean()) :: String.t()
   defp standardize_raw_body(body, true), do: URI.encode(body)
   defp standardize_raw_body(body, false), do: body
+
+  # Determines the flag type based on the content type header
+  @spec set_flag_type(list()) :: String.t()
+  defp set_flag_type(headers) do
+    content_type = Enum.find(headers, fn {key, _val} -> key == "Content-Type" end)
+
+    case content_type do
+      {"Content-Type", "application/x-www-form-urlencoded"} -> "--data-urlencode"
+      {"Content-Type", "multipart/form-data"} -> "--form"
+      _ -> "--data"
+    end
+  end
+
+  # Converts method atom into a string and assigns proper flag prefixes
+  @spec translate_method(atom) :: String.t()
+  defp translate_method(:get), do: ""
+  defp translate_method(:head), do: "-I "
+
+  defp translate_method(method) when is_atom(method) do
+    translated =
+      method
+      |> Atom.to_string()
+      |> String.upcase()
+
+    "#{translated} "
+  end
+
+  # Sets the location flag based on the follow_redirects option
+  @spec location_flag(keyword()) :: String.t()
+  defp location_flag(nil), do: ""
+
+  defp location_flag(opts) do
+    with {:ok, follow_redirects} <- Keyword.fetch(opts, :follow_redirects) do
+      (follow_redirects == true) |> set_location_flag()
+    else
+      _ -> ""
+    end
+  end
+
+  # Returns a location flag based on boolean input
+  @spec set_location_flag(boolean()) :: String.t()
+  defp set_location_flag(true), do: "-L "
+  defp set_location_flag(_), do: ""
 
   # Returns either an empty string or a query string to append to the URL
   @spec format_query_params(String.t()) :: String.t()
