@@ -55,6 +55,7 @@ defmodule Tesla.Middleware.Curl do
     "curl POST #{headers}#{parsed_parts} #{env.url}#{query_params}"
   end
 
+  # Handles requests with an Env that has no query params, but a binary body
   defp construct_curl(%Tesla.Env{query: []} = env, opts) when is_binary(env.body) do
     flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
@@ -67,18 +68,30 @@ defmodule Tesla.Middleware.Curl do
     "curl #{location}#{method}#{headers}#{flag_type} '#{body}' #{env.url}"
   end
 
+  # Handle requests with an Env that has a binary body, but may have query params
   defp construct_curl(%Tesla.Env{} = env, opts) when is_binary(env.body) do
     flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
     location = location_flag(opts)
     method = translate_method(env.method)
 
+    body = with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
+      Enum.map(redact_fields, fn field ->
+        is_regular_expression = is_regex(field)
+        filter_raw_body(is_regular_expression, env.body.data, field)
+      end)
+      |> List.first()
+    else
+      _ -> env.body.data
+    end
+
     query_params =
       Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986) |> format_query_params()
 
-    "curl #{location}#{method}#{headers}#{flag_type} #{env.body.data} #{env.url}#{query_params}"
+    "curl #{location}#{method}#{headers}#{flag_type} #{body} #{env.url}#{query_params}"
   end
 
+  # Handle requests with an Env that has query params.
   defp construct_curl(%Tesla.Env{} = env, opts) do
     flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
@@ -118,6 +131,17 @@ defmodule Tesla.Middleware.Curl do
       _ -> construct_field(flag_type, key, value, false)
     end
   end
+
+  # Filters items from a raw request body, as defined in a capture regex
+  @spec filter_raw_body(boolean(), String.t(), Regex.t() | String.t()) :: String.t()
+  defp filter_raw_body(true, str, regex) do
+    named_captures = Regex.named_captures(regex, str)
+    Enum.reduce(named_captures, str, fn {_key, value}, acc ->
+      String.replace(acc, value, "[REDACTED]", global: true)
+    end)
+  end
+
+  defp filter_raw_body(false, str, _regex), do: str
 
   # Checks if the key matches any of the redact_fields, including ones found in nested maps or lists
   @spec field_needs_redaction(String.t(), list()) :: list()
@@ -195,6 +219,10 @@ defmodule Tesla.Middleware.Curl do
   defp translate_value(key, value) do
     [{key, value}]
   end
+
+  @spec is_regex(Regex.t() | String.t()) :: boolean()
+  defp is_regex(%Regex{}), do: true
+  defp is_regex(_string), do: false
 
   # Converts atom keys to strings if needed
   @spec standardize_key(String.t() | atom()) :: String.t()
