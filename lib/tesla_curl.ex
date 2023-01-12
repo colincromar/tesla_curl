@@ -147,9 +147,11 @@ defmodule Tesla.Middleware.Curl do
   @spec field_needs_redaction(String.t(), list()) :: list()
   defp field_needs_redaction(key, redact_fields) do
     downcased_key = String.downcase(key)
-    downcased_fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
-    Enum.map(downcased_fields, fn field ->
-      String.contains?(downcased_key, field) || String.contains?(downcased_key, "[#{field}]")
+    Enum.map(redact_fields, fn field ->
+      if !is_regex(field) do
+        downcased_field = String.downcase(field)
+        String.contains?(downcased_key, downcased_field) || String.contains?(downcased_key, "[#{downcased_field}]")
+      end
     end)
   end
 
