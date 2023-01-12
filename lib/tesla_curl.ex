@@ -57,6 +57,7 @@ defmodule Tesla.Middleware.Curl do
 
   # Handles requests with an Env that has no query params, but a binary body
   defp construct_curl(%Tesla.Env{query: []} = env, opts) when is_binary(env.body) do
+    require IEx; IEx.pry()
     flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
     location = location_flag(opts)
