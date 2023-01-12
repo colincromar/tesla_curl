@@ -66,7 +66,17 @@ defmodule Tesla.Middleware.Curl do
     needs_url_encoding = headers =~ "application/x-www-form-urlencoded"
     body = standardize_raw_body(env.body, needs_url_encoding)
 
-    "curl #{location}#{method}#{headers}#{flag_type} '#{body}' #{env.url}"
+    sanitized_body = with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
+      Enum.map(redact_fields, fn field ->
+        is_regular_expression = is_regex(field)
+        filter_raw_body(is_regular_expression, body, field)
+      end)
+      |> List.first()
+    else
+      _ -> body
+    end
+
+    "curl #{location}#{method}#{headers}#{flag_type} '#{sanitized_body}' #{env.url}"
   end
 
   # Handle requests with an Env that has a binary body, but may have query params
