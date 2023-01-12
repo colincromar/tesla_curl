@@ -104,6 +104,22 @@ defmodule Tesla.Middleware.CurlTest do
                  "--data-urlencode 'abc=123' https://example.com"
     end
 
+    test "handles regex captures in redact_fields for raw request bodies" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :get,
+                   url: "https://example.com",
+                   headers: [],
+                   body: "<username>some_username</username><password>some password</password>"
+                 },
+                 [],
+                 redact_fields: [~r{<password>(.*?)</password>}]
+               )
+             end) =~
+               "curl --data '<username>some_username</username><password>[REDACTED]</password>' https://example.com"
+    end
+
     test "when env contains query parameters, they are url encoded" do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(
@@ -116,7 +132,7 @@ defmodule Tesla.Middleware.CurlTest do
                    ]
                  },
                  [],
-                 nil
+                 []
                )
              end) =~
                "curl https://example.com?param1=Hello%20World&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21"
@@ -150,7 +166,7 @@ defmodule Tesla.Middleware.CurlTest do
                    body: "foo"
                  },
                  [],
-                 nil
+                 []
                )
              end) =~
                "curl POST --data 'foo' https://example.com"
@@ -209,7 +225,7 @@ defmodule Tesla.Middleware.CurlTest do
                    body: "foo=b a r"
                  },
                  [],
-                 nil
+                 []
                )
              end) =~
                "curl POST --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=b%20a%20r' https://example.com"

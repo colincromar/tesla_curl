@@ -26,18 +26,6 @@ defmodule Tesla.Middleware.Curl do
     env
   end
 
-  # Parses the body parts of multipart requests into Curl format.
-  @spec parse_part(%Tesla.Multipart.Part{}) :: String.t()
-  defp parse_part(%Tesla.Multipart.Part{body: %File.Stream{}} = part) do
-    {_, field} = List.first(part.dispositions)
-    "--form #{field}=@#{part.body.path}"
-  end
-
-  defp parse_part(%Tesla.Multipart.Part{} = part) do
-    {_, field} = List.first(part.dispositions)
-    "--form #{field}=#{part.body}"
-  end
-
   # Calls parser functions and constructs the Curl command string.
   @spec construct_curl(Tesla.Env.t(), keyword()) :: String.t()
   defp construct_curl(%Tesla.Env{body: %Tesla.Multipart{}} = env, opts) do
@@ -55,6 +43,7 @@ defmodule Tesla.Middleware.Curl do
     "curl POST #{headers}#{parsed_parts} #{env.url}#{query_params}"
   end
 
+  # Handles requests with an Env that has no query params, but a binary body
   defp construct_curl(%Tesla.Env{query: []} = env, opts) when is_binary(env.body) do
     flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
@@ -64,21 +53,42 @@ defmodule Tesla.Middleware.Curl do
     needs_url_encoding = headers =~ "application/x-www-form-urlencoded"
     body = standardize_raw_body(env.body, needs_url_encoding)
 
-    "curl #{location}#{method}#{headers}#{flag_type} '#{body}' #{env.url}"
+    sanitized_body =
+      with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
+        Enum.reduce(redact_fields, body, fn field, acc ->
+          filter_raw_body(field, acc)
+        end)
+      else
+        _ -> body
+      end
+
+    "curl #{location}#{method}#{headers}#{flag_type} '#{sanitized_body}' #{env.url}"
   end
 
+  # Handle requests with an Env that has a binary body, but may have query params
   defp construct_curl(%Tesla.Env{} = env, opts) when is_binary(env.body) do
     flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
     location = location_flag(opts)
     method = translate_method(env.method)
+    body = env.body.data
+
+    sanitized_body =
+      with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
+        Enum.reduce(redact_fields, body, fn field, acc ->
+          filter_raw_body(field, acc)
+        end)
+      else
+        _ -> body
+      end
 
     query_params =
       Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986) |> format_query_params()
 
-    "curl #{location}#{method}#{headers}#{flag_type} #{env.body.data} #{env.url}#{query_params}"
+    "curl #{location}#{method}#{headers}#{flag_type} #{sanitized_body} #{env.url}#{query_params}"
   end
 
+  # Handle requests with an Env that has query params.
   defp construct_curl(%Tesla.Env{} = env, opts) do
     flag_type = set_flag_type(env.headers)
     headers = parse_headers(env.headers, opts)
@@ -90,6 +100,18 @@ defmodule Tesla.Middleware.Curl do
       Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986) |> format_query_params()
 
     "curl #{location}#{method}#{headers}#{body}#{env.url}#{query_params}"
+  end
+
+  # Parses the body parts of multipart requests into Curl format.
+  @spec parse_part(%Tesla.Multipart.Part{}) :: String.t()
+  defp parse_part(%Tesla.Multipart.Part{body: %File.Stream{}} = part) do
+    {_, field} = List.first(part.dispositions)
+    "--form #{field}=@#{part.body.path}"
+  end
+
+  defp parse_part(%Tesla.Multipart.Part{} = part) do
+    {_, field} = List.first(part.dispositions)
+    "--form #{field}=#{part.body}"
   end
 
   # Top-level function to parse headers
@@ -119,13 +141,31 @@ defmodule Tesla.Middleware.Curl do
     end
   end
 
+  # Filters items from a raw request body, as defined in a capture regex
+  @spec filter_raw_body(Regex.t() | String.t(), String.t()) :: String.t()
+  defp filter_raw_body(%Regex{} = regex, body) do
+    match_set = Regex.scan(regex, body)
+    captures = Enum.map(match_set, fn match -> match |> List.last() end)
+
+    Enum.reduce(captures, body, fn match, acc ->
+      String.replace(acc, match, "[REDACTED]", global: true)
+    end)
+  end
+
+  defp filter_raw_body(_field, body), do: body
+
   # Checks if the key matches any of the redact_fields, including ones found in nested maps or lists
   @spec field_needs_redaction(String.t(), list()) :: list()
   defp field_needs_redaction(key, redact_fields) do
     downcased_key = String.downcase(key)
-    downcased_fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
-    Enum.map(downcased_fields, fn field ->
-      String.contains?(downcased_key, field) || String.contains?(downcased_key, "[#{field}]")
+
+    Enum.map(redact_fields, fn field ->
+      if !Regex.regex?(field) do
+        downcased_field = String.downcase(field)
+
+        String.contains?(downcased_key, downcased_field) ||
+          String.contains?(downcased_key, "[#{downcased_field}]")
+      end
     end)
   end
 
@@ -135,12 +175,21 @@ defmodule Tesla.Middleware.Curl do
 
   defp filter_header(key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
+      fields =
+        Enum.map(redact_fields, fn field ->
+          downcase_field(field)
+        end)
+
       construct_header_string(key, value, Enum.member?(fields, String.downcase(key)))
     else
       _ -> construct_header_string(key, value, false)
     end
   end
+
+  # Downcases a field if it is a string, and not a regex
+  @spec downcase_field(Regex.t() | String.t()) :: String.t()
+  defp downcase_field(%Regex{} = field), do: field
+  defp downcase_field(field), do: String.downcase(field)
 
   # Constructs the header string
   @spec construct_header_string(String.t(), String.t(), boolean()) :: String.t()
@@ -149,7 +198,9 @@ defmodule Tesla.Middleware.Curl do
 
   # Constructs the body string
   @spec construct_field(String.t(), String.t(), String.t(), boolean()) :: String.t()
-  defp construct_field("--data-urlencode" = flag_type, key, value, false), do: "#{flag_type} '#{key}=#{URI.encode(value)}'"
+  defp construct_field("--data-urlencode" = flag_type, key, value, false),
+    do: "#{flag_type} '#{key}=#{URI.encode(value)}'"
+
   defp construct_field(flag_type, key, value, false), do: "#{flag_type} '#{key}=#{value}'"
   defp construct_field(flag_type, key, _value, true), do: "#{flag_type} '#{key}=[REDACTED]'"
 
