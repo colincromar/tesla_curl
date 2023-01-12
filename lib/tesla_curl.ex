@@ -50,12 +50,7 @@ defmodule Tesla.Middleware.Curl do
         _ -> body
       end
 
-    query_params =
-      if Enum.empty?(env.query) do
-        ""
-      else
-        format_query_params(env.query)
-      end
+    query_params = format_query_params(env.query)
 
     "curl #{location}#{method}#{headers}#{flag_type} '#{sanitized_body}' #{env.url}#{query_params}"
   end
