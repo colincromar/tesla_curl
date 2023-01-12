@@ -65,15 +65,16 @@ defmodule Tesla.Middleware.Curl do
     needs_url_encoding = headers =~ "application/x-www-form-urlencoded"
     body = standardize_raw_body(env.body, needs_url_encoding)
 
-    sanitized_body = with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      Enum.map(redact_fields, fn field ->
-        is_regular_expression = is_regex(field)
-        filter_raw_body(is_regular_expression, body, field)
-      end)
-      |> List.first()
-    else
-      _ -> body
-    end
+    sanitized_body =
+      with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
+        Enum.map(redact_fields, fn field ->
+          is_regular_expression = is_regex(field)
+          filter_raw_body(is_regular_expression, body, field)
+        end)
+        |> List.first()
+      else
+        _ -> body
+      end
 
     "curl #{location}#{method}#{headers}#{flag_type} '#{sanitized_body}' #{env.url}"
   end
@@ -85,15 +86,16 @@ defmodule Tesla.Middleware.Curl do
     location = location_flag(opts)
     method = translate_method(env.method)
 
-    body = with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      Enum.map(redact_fields, fn field ->
-        is_regular_expression = is_regex(field)
-        filter_raw_body(is_regular_expression, env.body.data, field)
-      end)
-      |> List.first()
-    else
-      _ -> env.body.data
-    end
+    body =
+      with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
+        Enum.map(redact_fields, fn field ->
+          is_regular_expression = is_regex(field)
+          filter_raw_body(is_regular_expression, env.body.data, field)
+        end)
+        |> List.first()
+      else
+        _ -> env.body.data
+      end
 
     query_params =
       Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986) |> format_query_params()
@@ -146,6 +148,7 @@ defmodule Tesla.Middleware.Curl do
   @spec filter_raw_body(boolean(), String.t(), Regex.t() | String.t()) :: String.t()
   defp filter_raw_body(true, str, regex) do
     named_captures = Regex.named_captures(regex, str)
+
     Enum.reduce(named_captures, str, fn {_key, value}, acc ->
       String.replace(acc, value, "[REDACTED]", global: true)
     end)
@@ -157,10 +160,13 @@ defmodule Tesla.Middleware.Curl do
   @spec field_needs_redaction(String.t(), list()) :: list()
   defp field_needs_redaction(key, redact_fields) do
     downcased_key = String.downcase(key)
+
     Enum.map(redact_fields, fn field ->
       if !is_regex(field) do
         downcased_field = String.downcase(field)
-        String.contains?(downcased_key, downcased_field) || String.contains?(downcased_key, "[#{downcased_field}]")
+
+        String.contains?(downcased_key, downcased_field) ||
+          String.contains?(downcased_key, "[#{downcased_field}]")
       end
     end)
   end
@@ -171,9 +177,11 @@ defmodule Tesla.Middleware.Curl do
 
   defp filter_header(key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      fields = Enum.map(redact_fields, fn field ->
-        downcase_field(!is_regex(field), field)
-      end)
+      fields =
+        Enum.map(redact_fields, fn field ->
+          downcase_field(!is_regex(field), field)
+        end)
+
       construct_header_string(key, value, Enum.member?(fields, String.downcase(key)))
     else
       _ -> construct_header_string(key, value, false)
@@ -191,7 +199,9 @@ defmodule Tesla.Middleware.Curl do
 
   # Constructs the body string
   @spec construct_field(String.t(), String.t(), String.t(), boolean()) :: String.t()
-  defp construct_field("--data-urlencode" = flag_type, key, value, false), do: "#{flag_type} '#{key}=#{URI.encode(value)}'"
+  defp construct_field("--data-urlencode" = flag_type, key, value, false),
+    do: "#{flag_type} '#{key}=#{URI.encode(value)}'"
+
   defp construct_field(flag_type, key, value, false), do: "#{flag_type} '#{key}=#{value}'"
   defp construct_field(flag_type, key, _value, true), do: "#{flag_type} '#{key}=[REDACTED]'"
 

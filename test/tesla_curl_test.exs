@@ -106,18 +106,18 @@ defmodule Tesla.Middleware.CurlTest do
 
     test "handles regex captures in redact_fields for raw request bodies" do
       assert capture_log(fn ->
-        Tesla.Middleware.Curl.call(
-          %Tesla.Env{
-            method: :get,
-            url: "https://example.com",
-            headers: [],
-            body: "<username>some_username</username><password>some password</password>"
-          },
-          [],
-          redact_fields: [~r{<password>(?<password_value>.*?)</password>}]
-        )
-      end) =~
-        "curl --data '<username>some_username</username><password>[REDACTED]</password>' https://example.com"
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :get,
+                   url: "https://example.com",
+                   headers: [],
+                   body: "<username>some_username</username><password>some password</password>"
+                 },
+                 [],
+                 redact_fields: [~r{<password>(?<password_value>.*?)</password>}]
+               )
+             end) =~
+               "curl --data '<username>some_username</username><password>[REDACTED]</password>' https://example.com"
     end
 
     test "when env contains query parameters, they are url encoded" do
