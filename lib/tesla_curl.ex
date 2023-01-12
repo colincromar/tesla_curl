@@ -14,15 +14,15 @@ defmodule Tesla.Middleware.Curl do
   @spec call(Tesla.Env.t(), Tesla.Env.stack(), keyword() | nil) :: Tesla.Env.result()
   def call(env, next, opts \\ []) do
     env
-    |> log_request(opts)
+    |> construct_curl(opts)
+    |> log_request(env)
     |> Tesla.run(next)
   end
 
   # Calls the function to construct the curl command and logs it.
-  @spec log_request(Tesla.Env.t(), keyword() | nil) :: Tesla.Env.t()
-  defp log_request(env, opts) do
-    curl = construct_curl(env, opts)
-    Logger.info(curl)
+  @spec log_request(String.t(), Tesla.Env.t()) :: Tesla.Env.t()
+  defp log_request(command, env) do
+    Logger.info(command)
     env
   end
 
