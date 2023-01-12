@@ -34,6 +34,13 @@ You can pass a list of header keys or body field keys to be redacted in the opti
 
 If supplied, the redacted fields will be replaced with `[REDACTED]` in the curl command.
 
+If using a raw string as the request body, you can use a regular expression with a capture group to redact the field. For example, if 
+you were supplying Tesla with a string body that looked like this- 
+
+```<username>John Doe</username><password>horse battery staple</password>```
+
+You could redact the password field by supplying the following option- `redact_fields: [~r{<password>(.*?)</password>}]`
+
 #### Follow Redirects
 
 If you would like to enable the flag to follow redirects by default, supply `follow_redirects: true` in the options list.
