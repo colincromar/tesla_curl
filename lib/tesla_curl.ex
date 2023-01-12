@@ -145,10 +145,11 @@ defmodule Tesla.Middleware.Curl do
   # Filters items from a raw request body, as defined in a capture regex
   @spec filter_raw_body(Regex.t() | String.t(), String.t()) :: String.t()
   defp filter_raw_body(%Regex{} = regex, body) do
-    named_captures = Regex.named_captures(regex, body)
+    match_set = Regex.scan(regex, body)
+    captures = Enum.map(match_set, fn match -> match |> List.last() end)
 
-    Enum.reduce(named_captures, body, fn {_key, value}, acc ->
-      String.replace(acc, value, "[REDACTED]", global: true)
+    Enum.reduce(captures, body, fn match, acc ->
+      String.replace(acc, match, "[REDACTED]", global: true)
     end)
   end
 
@@ -160,7 +161,7 @@ defmodule Tesla.Middleware.Curl do
     downcased_key = String.downcase(key)
 
     Enum.map(redact_fields, fn field ->
-      if !is_regex(field) do
+      if !Regex.regex?(field) do
         downcased_field = String.downcase(field)
 
         String.contains?(downcased_key, downcased_field) ||
@@ -246,10 +247,6 @@ defmodule Tesla.Middleware.Curl do
   defp translate_value(key, value) do
     [{key, value}]
   end
-
-  @spec is_regex(Regex.t() | String.t()) :: boolean()
-  defp is_regex(%Regex{}), do: true
-  defp is_regex(_string), do: false
 
   # Converts atom keys to strings if needed
   @spec standardize_key(String.t() | atom()) :: String.t()

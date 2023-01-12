@@ -114,7 +114,7 @@ defmodule Tesla.Middleware.CurlTest do
                    body: "<username>some_username</username><password>some password</password>"
                  },
                  [],
-                 redact_fields: [~r{<password>(?<password_value>.*?)</password>}]
+                 redact_fields: [~r{<password>(.*?)</password>}]
                )
              end) =~
                "curl --data '<username>some_username</username><password>[REDACTED]</password>' https://example.com"
