@@ -68,8 +68,7 @@ defmodule Tesla.Middleware.Curl do
     sanitized_body =
       with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
         Enum.map(redact_fields, fn field ->
-          is_regular_expression = is_regex(field)
-          filter_raw_body(is_regular_expression, body, field)
+          filter_raw_body(field, body)
         end)
         |> List.first()
       else
@@ -89,8 +88,7 @@ defmodule Tesla.Middleware.Curl do
     body =
       with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
         Enum.map(redact_fields, fn field ->
-          is_regular_expression = is_regex(field)
-          filter_raw_body(is_regular_expression, env.body.data, field)
+          filter_raw_body(field, env.body.data)
         end)
         |> List.first()
       else
@@ -145,16 +143,16 @@ defmodule Tesla.Middleware.Curl do
   end
 
   # Filters items from a raw request body, as defined in a capture regex
-  @spec filter_raw_body(boolean(), String.t(), Regex.t() | String.t()) :: String.t()
-  defp filter_raw_body(true, str, regex) do
-    named_captures = Regex.named_captures(regex, str)
+  @spec filter_raw_body(Regex.t() | String.t(), String.t()) :: String.t()
+  defp filter_raw_body(%Regex{} = regex, body) do
+    named_captures = Regex.named_captures(regex, body)
 
-    Enum.reduce(named_captures, str, fn {_key, value}, acc ->
+    Enum.reduce(named_captures, body, fn {_key, value}, acc ->
       String.replace(acc, value, "[REDACTED]", global: true)
     end)
   end
 
-  defp filter_raw_body(false, str, _regex), do: str
+  defp filter_raw_body(_field, body), do: body
 
   # Checks if the key matches any of the redact_fields, including ones found in nested maps or lists
   @spec field_needs_redaction(String.t(), list()) :: list()
@@ -179,7 +177,7 @@ defmodule Tesla.Middleware.Curl do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
       fields =
         Enum.map(redact_fields, fn field ->
-          downcase_field(!is_regex(field), field)
+          downcase_field(field)
         end)
 
       construct_header_string(key, value, Enum.member?(fields, String.downcase(key)))
@@ -188,9 +186,10 @@ defmodule Tesla.Middleware.Curl do
     end
   end
 
-  @spec downcase_field(boolean(), Regex.t() | String.t()) :: String.t()
-  defp downcase_field(true, field), do: String.downcase(field)
-  defp downcase_field(false, field), do: field
+  # Downcases a field if it is a string, and not a regex
+  @spec downcase_field(Regex.t() | String.t()) :: String.t()
+  defp downcase_field(%Regex{} = field), do: field
+  defp downcase_field(field), do: String.downcase(field)
 
   # Constructs the header string
   @spec construct_header_string(String.t(), String.t(), boolean()) :: String.t()
