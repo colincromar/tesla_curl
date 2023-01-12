@@ -161,7 +161,13 @@ defmodule Tesla.Middleware.Curl do
 
   defp filter_header(key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      fields = Enum.map(redact_fields, fn field -> String.downcase(field) end)
+      fields = Enum.map(redact_fields, fn field ->
+        if is_regex(field) do
+          field
+        else
+          String.downcase(field)
+        end
+      end)
       construct_header_string(key, value, Enum.member?(fields, String.downcase(key)))
     else
       _ -> construct_header_string(key, value, false)
