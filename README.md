@@ -41,7 +41,8 @@ you were supplying Tesla with a string body that looked like this-
 <username>John Doe</username><password>horse battery staple</password>
 ```
 
-You could redact the password field by supplying the following option- `redact_fields: [~r{<password>(.*?)</password>}]`
+You could redact the password field by supplying the following option- `redact_fields: [~r{<password>(.*?)</password>}]`. This field 
+will be replaced with `<password>[REDACTED]</password>` in the curl command.
 
 #### Follow Redirects
 
