@@ -92,8 +92,7 @@ defmodule Tesla.Middleware.Curl do
   end
 
   # Returns either an empty string or a query string to append to the URL
-  @spec format_query_params(keyword() | nil) :: String.t()
-  defp format_query_params(nil), do: nil
+  @spec format_query_params(keyword()) :: String.t()
   defp format_query_params([]), do: nil
 
   defp format_query_params(query) do
