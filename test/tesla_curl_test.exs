@@ -222,7 +222,7 @@ defmodule Tesla.Middleware.CurlTest do
                    method: :post,
                    url: "https://example.com",
                    headers: [{"Content-Type", "application/x-www-form-urlencoded"}],
-                   body: "foo=b a r"
+                   body: "foo=b%20a%20r"
                  },
                  [],
                  []

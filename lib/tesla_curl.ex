@@ -26,43 +26,11 @@ defmodule Tesla.Middleware.Curl do
     env
   end
 
-  # Calls parser functions and constructs the Curl command string.
-  @spec construct_curl(Tesla.Env.t(), keyword()) :: String.t()
   defp construct_curl(%Tesla.Env{body: %Tesla.Multipart{}} = env, opts) do
     headers = parse_headers(env.headers, opts)
-
-    query_params =
-      Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986) |> format_query_params()
-
-    parsed_parts =
-      Enum.map(env.body.parts, fn part ->
-        parse_part(part)
-      end)
-      |> Enum.join(" ")
-
+    query_params = format_query_params(env.query)
+    parsed_parts = parse_parts_lazy(env.body.parts)
     "curl POST #{headers}#{parsed_parts} #{env.url}#{query_params}"
-  end
-
-  # Handles requests with an Env that has no query params, but a binary body
-  defp construct_curl(%Tesla.Env{query: []} = env, opts) when is_binary(env.body) do
-    flag_type = set_flag_type(env.headers)
-    headers = parse_headers(env.headers, opts)
-    location = location_flag(opts)
-    method = translate_method(env.method)
-
-    needs_url_encoding = headers =~ "application/x-www-form-urlencoded"
-    body = standardize_raw_body(env.body, needs_url_encoding)
-
-    sanitized_body =
-      with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-        Enum.reduce(redact_fields, body, fn field, acc ->
-          filter_raw_body(field, acc)
-        end)
-      else
-        _ -> body
-      end
-
-    "curl #{location}#{method}#{headers}#{flag_type} '#{sanitized_body}' #{env.url}"
   end
 
   # Handle requests with an Env that has a binary body, but may have query params
@@ -71,7 +39,7 @@ defmodule Tesla.Middleware.Curl do
     headers = parse_headers(env.headers, opts)
     location = location_flag(opts)
     method = translate_method(env.method)
-    body = env.body.data
+    body = env.body
 
     sanitized_body =
       with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
@@ -83,9 +51,13 @@ defmodule Tesla.Middleware.Curl do
       end
 
     query_params =
-      Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986) |> format_query_params()
+      if Enum.empty?(env.query) do
+        ""
+      else
+        format_query_params(env.query)
+      end
 
-    "curl #{location}#{method}#{headers}#{flag_type} #{sanitized_body} #{env.url}#{query_params}"
+    "curl #{location}#{method}#{headers}#{flag_type} '#{sanitized_body}' #{env.url}#{query_params}"
   end
 
   # Handle requests with an Env that has query params.
@@ -96,8 +68,7 @@ defmodule Tesla.Middleware.Curl do
     location = location_flag(opts)
     method = translate_method(env.method)
 
-    query_params =
-      Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986) |> format_query_params()
+    query_params = format_query_params(env.query)
 
     "curl #{location}#{method}#{headers}#{body}#{env.url}#{query_params}"
   end
@@ -125,6 +96,23 @@ defmodule Tesla.Middleware.Curl do
     end)
     |> Enum.join(" ")
     |> Kernel.<>(" ")
+  end
+
+  # Returns either an empty string or a query string to append to the URL
+  @spec format_query_params(keyword() | nil) :: String.t()
+  defp format_query_params(nil), do: nil
+  defp format_query_params([]), do: nil
+
+  defp format_query_params(query) do
+    "?" <> URI.encode_query(Enum.into(query, %{}), :rfc3986)
+  end
+
+  # Lazy parses the parts of a multipart request
+  @spec parse_parts_lazy(list()) :: String.t()
+  defp parse_parts_lazy(parts) do
+    parts
+    |> Stream.map(&parse_part/1)
+    |> Enum.join(" ")
   end
 
   # Reads the redact_fields option to find body fields to redact
@@ -252,11 +240,6 @@ defmodule Tesla.Middleware.Curl do
   defp standardize_key(key) when is_atom(key), do: Atom.to_string(key)
   defp standardize_key(key), do: key
 
-  # URI encode raw string body, if needed.
-  @spec standardize_raw_body(String.t(), boolean()) :: String.t()
-  defp standardize_raw_body(body, true), do: URI.encode(body)
-  defp standardize_raw_body(body, false), do: body
-
   # Determines the flag type based on the content type header
   @spec set_flag_type(list()) :: String.t()
   defp set_flag_type(headers) do
@@ -299,9 +282,4 @@ defmodule Tesla.Middleware.Curl do
   @spec set_location_flag(boolean()) :: String.t()
   defp set_location_flag(true), do: "-L "
   defp set_location_flag(_), do: ""
-
-  # Returns either an empty string or a query string to append to the URL
-  @spec format_query_params(String.t()) :: String.t()
-  defp format_query_params(""), do: ""
-  defp format_query_params(query_params), do: "?#{query_params}"
 end
