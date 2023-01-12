@@ -67,10 +67,9 @@ defmodule Tesla.Middleware.Curl do
 
     sanitized_body =
       with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-        Enum.map(redact_fields, fn field ->
-          filter_raw_body(field, body)
+        Enum.reduce(redact_fields, body, fn field, acc ->
+          filter_raw_body(field, acc)
         end)
-        |> List.first()
       else
         _ -> body
       end
@@ -84,21 +83,21 @@ defmodule Tesla.Middleware.Curl do
     headers = parse_headers(env.headers, opts)
     location = location_flag(opts)
     method = translate_method(env.method)
+    body = env.body.data
 
-    body =
+    sanitized_body =
       with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-        Enum.map(redact_fields, fn field ->
-          filter_raw_body(field, env.body.data)
+        Enum.reduce(redact_fields, body, fn field, acc ->
+          filter_raw_body(field, acc)
         end)
-        |> List.first()
       else
-        _ -> env.body.data
+        _ -> body
       end
 
     query_params =
       Enum.into(env.query, %{}) |> URI.encode_query(:rfc3986) |> format_query_params()
 
-    "curl #{location}#{method}#{headers}#{flag_type} #{body} #{env.url}#{query_params}"
+    "curl #{location}#{method}#{headers}#{flag_type} #{sanitized_body} #{env.url}#{query_params}"
   end
 
   # Handle requests with an Env that has query params.
