@@ -79,7 +79,7 @@ defmodule Tesla.Middleware.Curl do
     "--form #{field}=@#{path}"
   end
 
-  defp parse_part(%Tesla.Multipart.Part{dispositions: [{_, field} | _] = _dispositions} = part) do
+  defp parse_part(%Tesla.Multipart.Part{dispositions: [{_, field} | _] } = part) do
     "--form #{field}=#{part.body}"
   end
 
