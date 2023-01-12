@@ -13,6 +13,7 @@ defmodule Tesla.Middleware.Curl do
   """
   @spec call(Tesla.Env.t(), Tesla.Env.stack(), keyword() | nil) :: Tesla.Env.result()
   def call(env, next, opts \\ []) do
+    IO.inspect(env)
     env
     |> log_request(opts)
     |> Tesla.run(next)
