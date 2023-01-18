@@ -18,10 +18,12 @@ defmodule Tesla.Middleware.Curl do
     |> Tesla.run(next)
   end
 
-  # Calls the function to construct the curl command and logs it.
+  # Calls the function to construct the curl command and logs it. If an error occurs,
+  # it will be logged, and the request will continue as normal.
   @spec log_request_as_curl(Tesla.Env.t(), keyword() | nil) :: Tesla.Env.t()
   defp log_request_as_curl(env, opts) do
     try do
+      raise "Some error"
       construct_curl(env, opts)
       |> Logger.info()
     rescue
