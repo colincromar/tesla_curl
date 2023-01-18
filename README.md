@@ -38,7 +38,7 @@ If using a raw string as the request body, you can use a regular expression with
 you were supplying Tesla with a string body that looked like this- 
 
 ```xml
-<username>John Doe</username><password>horse battery staple</password>
+"<username>John Doe</username><password>horse battery staple</password>"
 ```
 
 You could redact the password field by supplying the following option- `redact_fields: [~r{<password>(.*?)</password>}]`. This field 
