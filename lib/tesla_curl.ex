@@ -23,7 +23,6 @@ defmodule Tesla.Middleware.Curl do
   @spec log_request_as_curl(Tesla.Env.t(), keyword() | nil) :: Tesla.Env.t()
   defp log_request_as_curl(env, opts) do
     try do
-      raise "Some error"
       construct_curl(env, opts)
       |> Logger.info()
     rescue
