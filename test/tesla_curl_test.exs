@@ -84,6 +84,28 @@ defmodule Tesla.Middleware.CurlTest do
       end)
     end
 
+    test "logs error, but request still succeeds if error is encountered" do
+      # Use a string as method field to simulate a failure
+      env = %Tesla.Env{
+        method: "not_valid",
+        url: "https://example.com",
+        headers: [
+          {"Authorization", "Bearer 123"},
+          {"Content-Type", "application/x-www-form-urlencoded"}
+        ],
+        body: [{"foo", "bar"}, {"abc", "123"}]
+      }
+
+      capture_log(fn ->
+        assert {:ok, _resp} = Tesla.Middleware.Curl.call(env, [], [])
+      end)
+
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(env, [], [])
+             end) =~
+               "[error] ** (FunctionClauseError) no function clause matching in Tesla.Middleware.Curl.translate_method/1"
+    end
+
     test "when body or headers are supplied with redact_fields, redacts those fields" do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(

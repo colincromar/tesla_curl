@@ -14,15 +14,22 @@ defmodule Tesla.Middleware.Curl do
   @spec call(Tesla.Env.t(), Tesla.Env.stack(), keyword() | nil) :: Tesla.Env.result()
   def call(env, next, opts \\ []) do
     env
-    |> construct_curl(opts)
-    |> log_request(env)
+    |> log_request_as_curl(opts)
     |> Tesla.run(next)
   end
 
-  # Calls the function to construct the curl command and logs it.
-  @spec log_request(String.t(), Tesla.Env.t()) :: Tesla.Env.t()
-  defp log_request(command, env) do
-    Logger.info(command)
+  # Calls the function to construct the curl command and logs it. If an error occurs,
+  # it will be logged, and the request will continue as normal.
+  @spec log_request_as_curl(Tesla.Env.t(), keyword() | nil) :: Tesla.Env.t()
+  defp log_request_as_curl(env, opts) do
+    try do
+      construct_curl(env, opts)
+      |> Logger.info()
+    rescue
+      e ->
+        Logger.error(Exception.format(:error, e, __STACKTRACE__))
+    end
+
     env
   end
 
@@ -30,6 +37,7 @@ defmodule Tesla.Middleware.Curl do
     headers = parse_headers(env.headers, opts)
     query_params = format_query_params(env.query)
     parsed_parts = parse_parts_lazy(env.body.parts)
+
     "curl POST #{headers}#{parsed_parts} #{env.url}#{query_params}"
   end
 
@@ -70,11 +78,14 @@ defmodule Tesla.Middleware.Curl do
 
   # Parses the body parts of multipart requests into Curl format.
   @spec parse_part(%Tesla.Multipart.Part{}) :: String.t()
-  defp parse_part(%Tesla.Multipart.Part{dispositions: [{_, field} | _], body: %File.Stream{path: path} }) do
+  defp parse_part(%Tesla.Multipart.Part{
+         dispositions: [{_, field} | _],
+         body: %File.Stream{path: path}
+       }) do
     "--form #{field}=@#{path}"
   end
 
-  defp parse_part(%Tesla.Multipart.Part{dispositions: [{_, field} | _] } = part) do
+  defp parse_part(%Tesla.Multipart.Part{dispositions: [{_, field} | _]} = part) do
     "--form #{field}=#{part.body}"
   end
 
