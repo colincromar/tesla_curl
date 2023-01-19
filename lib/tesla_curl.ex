@@ -246,7 +246,8 @@ defmodule Tesla.Middleware.Curl do
   defp standardize_key(key), do: key
 
   # Determines the flag type based on the content type header
-  @spec set_flag_type(list()) :: String.t()
+  @spec set_flag_type(list() | nil) :: String.t()
+  defp set_flag_type(nil), do: "--data"
   defp set_flag_type(headers) do
     content_type = Enum.find(headers, fn {key, _val} -> key == "Content-Type" end)
 
