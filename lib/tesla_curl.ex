@@ -7,6 +7,8 @@ defmodule Tesla.Middleware.Curl do
 
   @behaviour Tesla.Middleware
 
+  @type method :: :head | :get | :delete | :trace | :options | :post | :put | :patch
+
   @doc """
   Serves as the main entrypoint to the middleware. Handles this middleware and calls
   the next piece of middleware in the chain.
@@ -38,7 +40,7 @@ defmodule Tesla.Middleware.Curl do
     query_params = format_query_params(env.query)
     parsed_parts = parse_parts_lazy(env.body.parts)
 
-    "curl POST #{headers}#{parsed_parts} '#{env.url}#{query_params}'"
+    "curl -X POST #{headers}#{parsed_parts} '#{env.url}#{query_params}'"
   end
 
   # Handle requests with an Env that has a binary body, but may have query params
@@ -256,11 +258,12 @@ defmodule Tesla.Middleware.Curl do
   end
 
   # Converts method atom into a string and assigns proper flag prefixes
-  @spec translate_method(atom) :: String.t()
+  @spec translate_method(method()) :: String.t()
   defp translate_method(:get), do: ""
-  defp translate_method(:head), do: "-I "
+  defp translate_method(:head), do: "-I -X "
+  defp translate_method(:options), do: "-X "
 
-  defp translate_method(method) when is_atom(method) do
+  defp translate_method(method) do
     translated =
       method
       |> Atom.to_string()
