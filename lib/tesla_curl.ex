@@ -38,7 +38,7 @@ defmodule Tesla.Middleware.Curl do
     query_params = format_query_params(env.query)
     parsed_parts = parse_parts_lazy(env.body.parts)
 
-    "curl POST #{headers}#{parsed_parts} #{env.url}#{query_params}"
+    "curl POST #{headers}#{parsed_parts} '#{env.url}#{query_params}'"
   end
 
   # Handle requests with an Env that has a binary body, but may have query params
@@ -60,7 +60,7 @@ defmodule Tesla.Middleware.Curl do
 
     query_params = format_query_params(env.query)
 
-    "curl #{location}#{method}#{headers}#{flag_type} '#{sanitized_body}' #{env.url}#{query_params}"
+    "curl #{location}#{method}#{headers}#{flag_type} '#{sanitized_body}' '#{env.url}#{query_params}'"
   end
 
   # Handle requests with an Env that has query params.
@@ -73,7 +73,7 @@ defmodule Tesla.Middleware.Curl do
 
     query_params = format_query_params(env.query)
 
-    "curl #{location}#{method}#{headers}#{body}#{env.url}#{query_params}"
+    "curl #{location}#{method}#{headers}#{body}'#{env.url}#{query_params}'"
   end
 
   # Parses the body parts of multipart requests into Curl format.
@@ -82,11 +82,11 @@ defmodule Tesla.Middleware.Curl do
          dispositions: [{_, field} | _],
          body: %File.Stream{path: path}
        }) do
-    "--form #{field}=@#{path}"
+    "--form '#{field}=@#{path}'"
   end
 
   defp parse_part(%Tesla.Multipart.Part{dispositions: [{_, field} | _]} = part) do
-    "--form #{field}=#{part.body}"
+    "--form '#{field}=#{part.body}'"
   end
 
   # Top-level function to parse headers
