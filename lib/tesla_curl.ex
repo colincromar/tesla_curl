@@ -237,11 +237,6 @@ defmodule Tesla.Middleware.Curl do
     [{key, value}]
   end
 
-  # Converts atom keys to strings if needed
-  @spec standardize_key(String.t() | atom()) :: String.t()
-  defp standardize_key(key) when is_atom(key), do: Atom.to_string(key)
-  defp standardize_key(key), do: key
-
   # Determines the flag type based on the content type header
   @spec set_flag_type(list() | nil) :: String.t()
   defp set_flag_type(nil), do: "--data"
