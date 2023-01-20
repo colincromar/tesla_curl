@@ -123,7 +123,7 @@ defmodule Tesla.Middleware.CurlTest do
                  "--data-urlencode 'abc=123' 'https://example.com'"
     end
 
-    test "handles regex captures in redact_fields for raw request bodies" do
+    test "handles regex captures in redact_fields for string request bodies" do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(
                  %Tesla.Env{
@@ -175,7 +175,7 @@ defmodule Tesla.Middleware.CurlTest do
                  "'https://example.com/hello'"
     end
 
-    test "raw request bodies" do
+    test "string request bodies" do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(
                  %Tesla.Env{

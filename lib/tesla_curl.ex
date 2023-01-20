@@ -54,7 +54,7 @@ defmodule Tesla.Middleware.Curl do
     sanitized_body =
       with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
         Enum.reduce(redact_fields, body, fn field, acc ->
-          filter_raw_body(field, acc)
+          filter_string_body(field, acc)
         end)
       else
         _ -> body
@@ -134,9 +134,9 @@ defmodule Tesla.Middleware.Curl do
     end
   end
 
-  # Filters items from a raw request body, as defined in a capture regex
-  @spec filter_raw_body(Regex.t() | String.t(), String.t()) :: String.t()
-  defp filter_raw_body(%Regex{} = regex, body) do
+  # Filters items from a string request body, as defined in a capture regex
+  @spec filter_string_body(Regex.t() | String.t(), String.t()) :: String.t()
+  defp filter_string_body(%Regex{} = regex, body) do
     match_set = Regex.scan(regex, body)
     captures = Enum.map(match_set, fn match -> match |> List.last() end)
 
@@ -145,7 +145,7 @@ defmodule Tesla.Middleware.Curl do
     end)
   end
 
-  defp filter_raw_body(_field, body), do: body
+  defp filter_string_body(_field, body), do: body
 
   # Checks if the key matches any of the redact_fields, including ones found in nested maps or lists
   @spec field_needs_redaction(String.t(), list()) :: list()
