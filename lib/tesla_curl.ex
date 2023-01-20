@@ -7,6 +7,8 @@ defmodule Tesla.Middleware.Curl do
 
   @behaviour Tesla.Middleware
 
+  @type method :: :head | :get | :delete | :trace | :options | :post | :put | :patch
+
   @doc """
   Serves as the main entrypoint to the middleware. Handles this middleware and calls
   the next piece of middleware in the chain.
@@ -38,7 +40,7 @@ defmodule Tesla.Middleware.Curl do
     query_params = format_query_params(env.query)
     parsed_parts = parse_parts_lazy(env.body.parts)
 
-    "curl POST #{headers}#{parsed_parts} #{env.url}#{query_params}"
+    "curl -X POST #{headers}#{parsed_parts} '#{env.url}#{query_params}'"
   end
 
   # Handle requests with an Env that has a binary body, but may have query params
@@ -52,7 +54,7 @@ defmodule Tesla.Middleware.Curl do
     sanitized_body =
       with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
         Enum.reduce(redact_fields, body, fn field, acc ->
-          filter_raw_body(field, acc)
+          filter_string_body(field, acc)
         end)
       else
         _ -> body
@@ -60,7 +62,7 @@ defmodule Tesla.Middleware.Curl do
 
     query_params = format_query_params(env.query)
 
-    "curl #{location}#{method}#{headers}#{flag_type} '#{sanitized_body}' #{env.url}#{query_params}"
+    "curl #{location}#{method}#{headers}#{flag_type} '#{sanitized_body}' '#{env.url}#{query_params}'"
   end
 
   # Handle requests with an Env that has query params.
@@ -73,7 +75,7 @@ defmodule Tesla.Middleware.Curl do
 
     query_params = format_query_params(env.query)
 
-    "curl #{location}#{method}#{headers}#{body}#{env.url}#{query_params}"
+    "curl #{location}#{method}#{headers}#{body}'#{env.url}#{query_params}'"
   end
 
   # Parses the body parts of multipart requests into Curl format.
@@ -82,11 +84,11 @@ defmodule Tesla.Middleware.Curl do
          dispositions: [{_, field} | _],
          body: %File.Stream{path: path}
        }) do
-    "--form #{field}=@#{path}"
+    "--form '#{field}=@#{path}'"
   end
 
   defp parse_part(%Tesla.Multipart.Part{dispositions: [{_, field} | _]} = part) do
-    "--form #{field}=#{part.body}"
+    "--form '#{field}=#{part.body}'"
   end
 
   # Top-level function to parse headers
@@ -132,9 +134,9 @@ defmodule Tesla.Middleware.Curl do
     end
   end
 
-  # Filters items from a raw request body, as defined in a capture regex
-  @spec filter_raw_body(Regex.t() | String.t(), String.t()) :: String.t()
-  defp filter_raw_body(%Regex{} = regex, body) do
+  # Filters items from a string request body, as defined in a capture regex
+  @spec filter_string_body(Regex.t() | String.t(), String.t()) :: String.t()
+  defp filter_string_body(%Regex{} = regex, body) do
     match_set = Regex.scan(regex, body)
     captures = Enum.map(match_set, fn match -> match |> List.last() end)
 
@@ -143,7 +145,7 @@ defmodule Tesla.Middleware.Curl do
     end)
   end
 
-  defp filter_raw_body(_field, body), do: body
+  defp filter_string_body(_field, body), do: body
 
   # Checks if the key matches any of the redact_fields, including ones found in nested maps or lists
   @spec field_needs_redaction(String.t(), list()) :: list()
@@ -244,7 +246,8 @@ defmodule Tesla.Middleware.Curl do
   defp standardize_key(key), do: key
 
   # Determines the flag type based on the content type header
-  @spec set_flag_type(list()) :: String.t()
+  @spec set_flag_type(list() | nil) :: String.t()
+  defp set_flag_type(nil), do: "--data"
   defp set_flag_type(headers) do
     content_type = Enum.find(headers, fn {key, _val} -> key == "Content-Type" end)
 
@@ -256,17 +259,16 @@ defmodule Tesla.Middleware.Curl do
   end
 
   # Converts method atom into a string and assigns proper flag prefixes
-  @spec translate_method(atom) :: String.t()
+  @spec translate_method(method()) :: String.t()
+
   defp translate_method(:get), do: ""
   defp translate_method(:head), do: "-I "
-
-  defp translate_method(method) when is_atom(method) do
+  defp translate_method(method) do
     translated =
       method
       |> Atom.to_string()
       |> String.upcase()
-
-    "#{translated} "
+    "-X #{translated} "
   end
 
   # Sets the location flag based on the follow_redirects option

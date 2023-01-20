@@ -25,6 +25,15 @@ tesla_curl-*.tar
 # Temporary files, for example, from tests.
 /tmp/
 
+# Ignore priv/plts directory.
+/priv/plts/*.plt
+/priv/plts/*.plt.hash
+
+# Ignore .tool-versions file for asdf version manager
+.tool-versions
+
+# Ignore .elixir_ls directory for ElixirLS
 .elixir_ls/
 
+# Ignore apple file system metadata
 *.DS_Store

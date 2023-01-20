@@ -14,6 +14,7 @@ defmodule TeslaCurl.MixProject do
         extra_section: []
       ],
       description: "A middleware for the Tesla HTTP client that logs requests expressed in Curl",
+      dialyzer: dialyzer(),
       elixir: "~> 1.14",
       name: "TeslaCurl",
       package: package(),
@@ -33,7 +34,15 @@ defmodule TeslaCurl.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
       {:tesla, "~> 1.4"}
+    ]
+  end
+
+  defp dialyzer do
+    [
+      plt_add_apps: [:mix],
+      plt_file: {:no_warn, "priv/plts/dialyzer.plt"}
     ]
   end
 

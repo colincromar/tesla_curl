@@ -34,7 +34,7 @@ You can pass a list of header keys or body field keys to be redacted in the opti
 
 If supplied, the redacted fields will be replaced with `[REDACTED]` in the curl command.
 
-If using a raw string as the request body, you can use a regular expression with a capture group to redact the field. For example, if 
+If a request's body is a string, you can use a regular expression with a capture group to redact the field. For example, if
 you were supplying Tesla with a string body that looked like this- 
 
 ```xml
