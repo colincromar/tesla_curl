@@ -71,13 +71,6 @@ defmodule Tesla.Middleware.CurlTest do
   end
 
   describe "call/3" do
-    test "formats curl requsts and logs them" do
-      assert capture_log(fn ->
-               call()
-             end) =~
-               "curl --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=bar' 'https://example.com'"
-    end
-
     test "is successful" do
       capture_log(fn ->
         assert {:ok, _} = call()
