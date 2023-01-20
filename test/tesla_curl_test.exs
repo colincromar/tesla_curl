@@ -188,7 +188,7 @@ defmodule Tesla.Middleware.CurlTest do
                  []
                )
              end) =~
-               "curl POST --data 'foo' 'https://example.com'"
+               "curl -X POST --data 'foo' 'https://example.com'"
     end
 
     test "follow_redirects option" do
@@ -218,7 +218,7 @@ defmodule Tesla.Middleware.CurlTest do
                  nil
                )
              end) =~
-               "curl -I -X 'https://example.com'"
+               "curl -I 'https://example.com'"
 
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(
@@ -247,7 +247,7 @@ defmodule Tesla.Middleware.CurlTest do
                  []
                )
              end) =~
-               "curl POST --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=b%20a%20r' 'https://example.com'"
+               "curl -X POST --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=b%20a%20r' 'https://example.com'"
     end
 
     test "handles bodies with nested maps and lists" do
@@ -271,7 +271,7 @@ defmodule Tesla.Middleware.CurlTest do
                  redact_fields: ["h", "authorization"]
                )
              end) =~
-               "curl POST --header 'Content-Type: application/json' --data 'baz[0][a]=b' --data 'baz[1][c]=d' " <>
+               "curl -X POST --header 'Content-Type: application/json' --data 'baz[0][a]=b' --data 'baz[1][c]=d' " <>
                  "--data 'baz[2][e][f]=g' --data 'baz[3][h]=[REDACTED]' --data 'foo=bar' 'https://example.com'"
     end
   end
