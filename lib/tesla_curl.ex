@@ -260,17 +260,15 @@ defmodule Tesla.Middleware.Curl do
 
   # Converts method atom into a string and assigns proper flag prefixes
   @spec translate_method(method()) :: String.t()
-  defp translate_method(:get), do: ""
-  defp translate_method(:head), do: "-I -X "
-  defp translate_method(:options), do: "-X "
 
+  defp translate_method(:get), do: ""
+  defp translate_method(:head), do: "-I "
   defp translate_method(method) do
     translated =
       method
       |> Atom.to_string()
       |> String.upcase()
-
-    "#{translated} "
+    "-X #{translated} "
   end
 
   # Sets the location flag based on the follow_redirects option
