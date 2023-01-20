@@ -68,9 +68,9 @@ defmodule Tesla.Middleware.Curl do
   # Handle requests with an Env that has query params.
   defp construct_curl(%Tesla.Env{} = env, opts) do
     flag_type = set_flag_type(env.headers)
+    location = location_flag(opts)
     headers = parse_headers(env.headers, opts)
     body = parse_body(env.body, flag_type, opts)
-    location = location_flag(opts)
     method = translate_method(env.method)
 
     query_params = format_query_params(env.query)
@@ -121,10 +121,7 @@ defmodule Tesla.Middleware.Curl do
   end
 
   # Reads the redact_fields option to find body fields to redact
-  @spec filter_body(String.t(), String.t(), String.t(), keyword() | nil) :: String.t()
-  defp filter_body(flag_type, key, value, nil),
-    do: construct_field(flag_type, standardize_key(key), value, false)
-
+  @spec filter_body(String.t(), String.t(), String.t(), keyword()) :: String.t()
   defp filter_body(flag_type, key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
       is_redacted = Enum.any?(field_needs_redaction(key, redact_fields), fn x -> x == true end)
@@ -248,6 +245,7 @@ defmodule Tesla.Middleware.Curl do
   # Determines the flag type based on the content type header
   @spec set_flag_type(list() | nil) :: String.t()
   defp set_flag_type(nil), do: "--data"
+
   defp set_flag_type(headers) do
     content_type = Enum.find(headers, fn {key, _val} -> key == "Content-Type" end)
 
@@ -260,14 +258,15 @@ defmodule Tesla.Middleware.Curl do
 
   # Converts method atom into a string and assigns proper flag prefixes
   @spec translate_method(method()) :: String.t()
-
   defp translate_method(:get), do: ""
   defp translate_method(:head), do: "-I "
+
   defp translate_method(method) do
     translated =
       method
       |> Atom.to_string()
       |> String.upcase()
+
     "-X #{translated} "
   end
 
