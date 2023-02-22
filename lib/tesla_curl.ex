@@ -151,9 +151,7 @@ defmodule Tesla.Middleware.Curl do
   end
 
   # Recursively handles any nested maps or lists, returns a list of the translated parameters
-  @spec translate_parameters(String.t(), String.t(), any(), keyword() | nil) :: [
-          String.t()
-        ]
+  @spec translate_parameters(String.t(), String.t(), any(), keyword() | nil) :: [String.t()]
   defp translate_parameters(flag_type, key, value, opts) when is_map(value) do
     maybe_redact_field(key, value, opts)
     |> Map.to_list()
@@ -200,14 +198,8 @@ defmodule Tesla.Middleware.Curl do
   # Redacts the value if the key matches any of the redact_fields, if supplied
   @spec maybe_redact_field(String.t(), any(), keyword() | nil) :: any()
   defp maybe_redact_field(_key, value, nil), do: value
-
-  defp maybe_redact_field(_key, value, _opts) when is_map(value) do
-    value
-  end
-
-  defp maybe_redact_field(_key, value, _opts) when is_list(value) do
-    value
-  end
+  defp maybe_redact_field(_key, value, _opts) when is_map(value), do: value
+  defp maybe_redact_field(_key, value, _opts) when is_list(value), do: value
 
   defp maybe_redact_field(key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
