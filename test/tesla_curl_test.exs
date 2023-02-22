@@ -186,18 +186,24 @@ defmodule Tesla.Middleware.CurlTest do
 
     test "when body is a map, fields are redacted" do
       assert capture_log(fn ->
-        Tesla.Middleware.Curl.call(
-          %Tesla.Env{
-            method: :post,
-            url: "https://example.com",
-            headers: [],
-            body: %{"wiki_page" => %{"name" => "foo", "body" => "bar"}}
-          },
-          [],
-          [redact_fields: ["name"]]
-        )
-      end) =~
-        "curl -X POST --data 'wiki_page[body]=bar' --data 'wiki_page[name]=[REDACTED]' 'https://example.com'"
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :post,
+                   url: "https://example.com",
+                   headers: [],
+                   body: %{
+                     "wiki_page" => %{
+                       "name" => "foo",
+                       "body" => "bar",
+                       "options" => %{"is_published" => true}
+                     }
+                   }
+                 },
+                 [],
+                 redact_fields: ["name", "is_published"]
+               )
+             end) =~
+               "curl -X POST --data 'wiki_page[body]=bar' --data 'wiki_page[name]=[REDACTED]' --data 'wiki_page[options][is_published]=[REDACTED]' 'https://example.com'"
     end
 
     test "follow_redirects option" do

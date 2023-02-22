@@ -120,17 +120,6 @@ defmodule Tesla.Middleware.Curl do
     |> Enum.join(" ")
   end
 
-  # Reads the redact_fields option to find body fields to redact
-  # @spec filter_body(String.t(), String.t(), String.t(), keyword()) :: String.t()
-  # defp filter_body(flag_type, key, value, opts) do
-  #   with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-  #     is_redacted = Enum.any?(field_needs_redaction(key, redact_fields), fn x -> x == true end)
-  #     construct_field(flag_type, key, value, is_redacted)
-  #   else
-  #     _ -> construct_field(flag_type, key, value, false)
-  #   end
-  # end
-
   # Filters items from a string request body, as defined in a capture regex
   @spec filter_string_body(Regex.t() | String.t(), String.t()) :: String.t()
   defp filter_string_body(%Regex{} = regex, body) do
@@ -200,56 +189,55 @@ defmodule Tesla.Middleware.Curl do
 
   defp parse_body(body, flag_type, opts) do
     Enum.flat_map(body, fn {k, v} ->
-      # require IEx; IEx.pry()
-      translate_value(k, v, opts)
-    end)
-    |> Enum.map(fn {k, v} ->
-      construct_field(flag_type, k, v)
+      translate_value(flag_type, k, v, opts)
     end)
     |> Enum.join(" ")
     |> Kernel.<>(" ")
   end
 
   # Recursively handles any nested maps or lists, returns a tuple containing the translated keys and values in string form.
-  @spec translate_value(String.t(), map() | list() | String.t(), Keyword.t()) :: [{String.t(), String.t()}]
-  defp translate_value(key, value, opts) when is_map(value) do
+  @spec translate_value(String.t(), String.t(), map() | list() | String.t(), Keyword.t()) :: [
+          String.t()
+        ]
+  defp translate_value(flag_type, key, value, opts) when is_map(value) do
     safe_value = maybe_redact_field(key, value, opts)
 
     safe_value
     |> Map.to_list()
     |> Enum.flat_map(fn {k, v} ->
-      translate_value("#{key}[#{k}]", v, opts)
+      translate_value(flag_type, "#{key}[#{k}]", v, opts)
     end)
   end
 
-  defp translate_value(key, value, opts) when is_tuple(value) do
+  defp translate_value(flag_type, key, value, opts) when is_tuple(value) do
     safe_value = maybe_redact_field(key, value, opts)
 
     safe_value
     |> Enum.flat_map(fn {k, v} ->
-      translate_value("#{key}[#{k}]", v, opts)
+      translate_value(flag_type, "#{key}[#{k}]", v, opts)
     end)
   end
 
-  defp translate_value(key, value, opts) when is_list(value) do
+  defp translate_value(flag_type, key, value, opts) when is_list(value) do
     safe_value = maybe_redact_field(key, value, opts)
 
     safe_value
     |> Enum.with_index()
     |> Enum.flat_map(fn {v, i} ->
-      translate_value("#{key}[#{i}]", v, opts)
+      translate_value(flag_type, "#{key}[#{i}]", v, opts)
     end)
   end
 
-  defp translate_value(key, value, opts) do
+  defp translate_value(flag_type, key, value, opts) do
     safe_value = maybe_redact_field(key, value, opts)
-
-    [{key, safe_value}]
+    [construct_field(flag_type, key, safe_value)]
   end
 
   defp maybe_redact_field(key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      field_needs_redaction = Enum.any?(field_needs_redaction(key, redact_fields), fn x -> x == true end)
+      field_needs_redaction =
+        Enum.any?(field_needs_redaction(key, redact_fields), fn x -> x == true end)
+
       case field_needs_redaction do
         true -> "[REDACTED]"
         false -> value
