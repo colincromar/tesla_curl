@@ -177,7 +177,7 @@ defmodule Tesla.Middleware.Curl do
 
   defp translate_parameters(flag_type, key, value, opts) do
     safe_value = maybe_redact_field(key, value, opts)
-    [construct_field(flag_type, key, safe_value)]
+    [construct_parameter(flag_type, key, safe_value)]
   end
 
   # Checks if the key matches any of the redact_fields, including ones found in nested maps or lists
@@ -216,11 +216,11 @@ defmodule Tesla.Middleware.Curl do
   end
 
   # Constructs the body string
-  @spec construct_field(String.t(), String.t(), String.t()) :: String.t()
-  defp construct_field("--data-urlencode" = flag_type, key, value),
+  @spec construct_parameter(String.t(), String.t(), String.t()) :: String.t()
+  defp construct_parameter("--data-urlencode" = flag_type, key, value),
     do: "#{flag_type} '#{key}=#{URI.encode(value)}'"
 
-  defp construct_field(flag_type, key, value), do: "#{flag_type} '#{key}=#{value}'"
+  defp construct_parameter(flag_type, key, value), do: "#{flag_type} '#{key}=#{value}'"
 
   # Determines the flag type based on the content type header
   @spec set_flag_type(list() | nil) :: String.t()
