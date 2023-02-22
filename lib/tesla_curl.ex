@@ -98,7 +98,7 @@ defmodule Tesla.Middleware.Curl do
 
   defp parse_headers(headers, opts) do
     Enum.map(headers, fn {k, v} ->
-      construct_header_string(k, maybe_redact_field(k, v, opts))
+      construct_header(k, maybe_redact_field(k, v, opts))
     end)
     |> Enum.join(" ")
     |> Kernel.<>(" ")
@@ -134,8 +134,8 @@ defmodule Tesla.Middleware.Curl do
   defp filter_string_body(_field, body), do: body
 
   # Constructs the header string
-  @spec construct_header_string(String.t(), String.t()) :: String.t()
-  defp construct_header_string(key, value), do: "--header '#{key}: #{value}'"
+  @spec construct_header(String.t(), String.t()) :: String.t()
+  defp construct_header(key, value), do: "--header '#{key}: #{value}'"
 
   # Top-level function to parse body
   @spec parse_body(list() | nil, String.t(), keyword() | nil) :: String.t()
