@@ -121,15 +121,15 @@ defmodule Tesla.Middleware.Curl do
   end
 
   # Reads the redact_fields option to find body fields to redact
-  @spec filter_body(String.t(), String.t(), String.t(), keyword()) :: String.t()
-  defp filter_body(flag_type, key, value, opts) do
-    with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      is_redacted = Enum.any?(field_needs_redaction(key, redact_fields), fn x -> x == true end)
-      construct_field(flag_type, key, value, is_redacted)
-    else
-      _ -> construct_field(flag_type, key, value, false)
-    end
-  end
+  # @spec filter_body(String.t(), String.t(), String.t(), keyword()) :: String.t()
+  # defp filter_body(flag_type, key, value, opts) do
+  #   with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
+  #     is_redacted = Enum.any?(field_needs_redaction(key, redact_fields), fn x -> x == true end)
+  #     construct_field(flag_type, key, value, is_redacted)
+  #   else
+  #     _ -> construct_field(flag_type, key, value, false)
+  #   end
+  # end
 
   # Filters items from a string request body, as defined in a capture regex
   @spec filter_string_body(Regex.t() | String.t(), String.t()) :: String.t()
@@ -187,12 +187,11 @@ defmodule Tesla.Middleware.Curl do
   defp construct_header_string(key, _value, true), do: "--header '#{key}: [REDACTED]'"
 
   # Constructs the body string
-  @spec construct_field(String.t(), String.t(), String.t(), boolean()) :: String.t()
-  defp construct_field("--data-urlencode" = flag_type, key, value, false),
+  @spec construct_field(String.t(), String.t(), String.t()) :: String.t()
+  defp construct_field("--data-urlencode" = flag_type, key, value),
     do: "#{flag_type} '#{key}=#{URI.encode(value)}'"
 
-  defp construct_field(flag_type, key, value, false), do: "#{flag_type} '#{key}=#{value}'"
-  defp construct_field(flag_type, key, _value, true), do: "#{flag_type} '#{key}=[REDACTED]'"
+  defp construct_field(flag_type, key, value), do: "#{flag_type} '#{key}=#{value}'"
 
   # Top-level function to parse body
   @spec parse_body(list() | nil, String.t(), keyword() | nil) :: String.t()
@@ -201,40 +200,63 @@ defmodule Tesla.Middleware.Curl do
 
   defp parse_body(body, flag_type, opts) do
     Enum.flat_map(body, fn {k, v} ->
-      results = translate_value(k, v)
-      Enum.map(results, fn {key, value} -> filter_body(flag_type, key, value, opts) end)
+      # require IEx; IEx.pry()
+      translate_value(k, v, opts)
+    end)
+    |> Enum.map(fn {k, v} ->
+      construct_field(flag_type, k, v)
     end)
     |> Enum.join(" ")
     |> Kernel.<>(" ")
   end
 
   # Recursively handles any nested maps or lists, returns a tuple containing the translated keys and values in string form.
-  @spec translate_value(String.t(), map() | list() | String.t()) :: [{String.t(), String.t()}]
-  defp translate_value(key, value) when is_map(value) do
-    value
+  @spec translate_value(String.t(), map() | list() | String.t(), Keyword.t()) :: [{String.t(), String.t()}]
+  defp translate_value(key, value, opts) when is_map(value) do
+    safe_value = maybe_redact_field(key, value, opts)
+
+    safe_value
     |> Map.to_list()
     |> Enum.flat_map(fn {k, v} ->
-      translate_value("#{key}[#{k}]", v)
+      translate_value("#{key}[#{k}]", v, opts)
     end)
   end
 
-  defp translate_value(key, value) when is_tuple(value) do
-    value
+  defp translate_value(key, value, opts) when is_tuple(value) do
+    safe_value = maybe_redact_field(key, value, opts)
+
+    safe_value
     |> Enum.flat_map(fn {k, v} ->
-      translate_value("#{key}[#{k}]", v)
+      translate_value("#{key}[#{k}]", v, opts)
     end)
   end
 
-  defp translate_value(key, value) when is_list(value) do
-    value
+  defp translate_value(key, value, opts) when is_list(value) do
+    safe_value = maybe_redact_field(key, value, opts)
+
+    safe_value
     |> Enum.with_index()
     |> Enum.flat_map(fn {v, i} ->
-      translate_value("#{key}[#{i}]", v)
+      translate_value("#{key}[#{i}]", v, opts)
     end)
   end
 
-  defp translate_value(key, value) do
-    [{key, value}]
+  defp translate_value(key, value, opts) do
+    safe_value = maybe_redact_field(key, value, opts)
+
+    [{key, safe_value}]
+  end
+
+  defp maybe_redact_field(key, value, opts) do
+    with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
+      field_needs_redaction = Enum.any?(field_needs_redaction(key, redact_fields), fn x -> x == true end)
+      case field_needs_redaction do
+        true -> "[REDACTED]"
+        false -> value
+      end
+    else
+      _ -> value
+    end
   end
 
   # Determines the flag type based on the content type header

@@ -184,6 +184,22 @@ defmodule Tesla.Middleware.CurlTest do
                "curl -X POST --data 'foo' 'https://example.com'"
     end
 
+    test "when body is a map, fields are redacted" do
+      assert capture_log(fn ->
+        Tesla.Middleware.Curl.call(
+          %Tesla.Env{
+            method: :post,
+            url: "https://example.com",
+            headers: [],
+            body: %{"wiki_page" => %{"name" => "foo", "body" => "bar"}}
+          },
+          [],
+          [redact_fields: ["name"]]
+        )
+      end) =~
+        "curl -X POST --data 'wiki_page[body]=bar' --data 'wiki_page[name]=[REDACTED]' 'https://example.com'"
+    end
+
     test "follow_redirects option" do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(
