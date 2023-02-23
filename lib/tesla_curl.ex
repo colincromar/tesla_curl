@@ -171,7 +171,7 @@ defmodule Tesla.Middleware.Curl do
   # Recursively handles any nested maps or lists, returns a list of the translated parameters
   @spec translate_parameters(String.t(), String.t(), any(), keyword() | nil) :: [String.t()]
   defp translate_parameters(flag_type, key, value, opts) when is_map(value) do
-    maybe_redact_field(key, value, opts)
+    value
     |> Map.to_list()
     |> Enum.flat_map(fn {k, v} ->
       translate_parameters(flag_type, "#{key}[#{k}]", v, opts)
@@ -179,14 +179,14 @@ defmodule Tesla.Middleware.Curl do
   end
 
   defp translate_parameters(flag_type, key, value, opts) when is_tuple(value) do
-    maybe_redact_field(key, value, opts)
+    value
     |> Enum.flat_map(fn {k, v} ->
       translate_parameters(flag_type, "#{key}[#{k}]", v, opts)
     end)
   end
 
   defp translate_parameters(flag_type, key, value, opts) when is_list(value) do
-    maybe_redact_field(key, value, opts)
+    value
     |> Enum.with_index()
     |> Enum.flat_map(fn {v, i} ->
       translate_parameters(flag_type, "#{key}[#{i}]", v, opts)
@@ -198,33 +198,17 @@ defmodule Tesla.Middleware.Curl do
     [construct_parameter(flag_type, key, safe_value)]
   end
 
-  # Checks if the key matches any of the redact_fields, including ones found in nested maps or lists
-  @spec field_needs_redaction(String.t(), list()) :: list()
-  defp field_needs_redaction(key, redact_fields) do
-    downcased_key = String.downcase(key)
-
-    Enum.map(redact_fields, fn field ->
-      if !Regex.regex?(field) do
-        downcased_field = String.downcase(field)
-
-        String.contains?(downcased_key, downcased_field) ||
-          String.contains?(downcased_key, "[#{downcased_field}]")
-      end
-    end)
-  end
-
   # Redacts the value if the key matches any of the redact_fields, if supplied
   @spec maybe_redact_field(String.t(), any(), keyword() | nil) :: any()
   defp maybe_redact_field(_key, value, nil), do: value
-  defp maybe_redact_field(_key, value, _opts) when is_map(value), do: value
-  defp maybe_redact_field(_key, value, _opts) when is_list(value), do: value
 
   defp maybe_redact_field(key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      field_needs_redaction =
-        Enum.any?(field_needs_redaction(key, redact_fields), fn x -> x == true end)
+      needs_redaction = Enum.any?(redact_fields, fn field ->
+        field == key || String.contains?(key, "[#{field}]")
+      end)
 
-      case field_needs_redaction do
+      case needs_redaction do
         true -> "[REDACTED]"
         false -> value
       end
