@@ -194,10 +194,10 @@ defmodule Tesla.Middleware.CurlTest do
                    body: %{foo: "bar"}
                  },
                  [],
-                 [redact_fields: ["foo"]]
+                 redact_fields: ["foo"]
                )
              end) =~
-             "curl -X POST --data 'foo=[REDACTED]' 'https://example.com'"
+               "curl -X POST --data 'foo=[REDACTED]' 'https://example.com'"
     end
 
     test "redacts fields down the nesting chain if body is a map" do
