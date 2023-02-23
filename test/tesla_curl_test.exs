@@ -184,6 +184,41 @@ defmodule Tesla.Middleware.CurlTest do
                "curl -X POST --data 'foo' 'https://example.com'"
     end
 
+    test "redacts fields down the nesting chain if body is a map" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :post,
+                   url: "https://example.com",
+                   headers: [],
+                   body: %{
+                     "wiki_page" => %{
+                       "name" => "foo",
+                       "body" => "bar",
+                       "page" => "baz",
+                       "options" => %{
+                         "is_published" => true,
+                         "authorized_editors_ids" => [
+                           %{"id" => 1, "editor_name" => "User 1"},
+                           %{"id" => 2, "editor_name" => "User 2"}
+                         ]
+                       }
+                     }
+                   }
+                 },
+                 [],
+                 redact_fields: ["name", "is_published", "editor_name"]
+               )
+             end) =~
+               "curl -X POST --data 'wiki_page[body]=bar' --data 'wiki_page[name]=[REDACTED]' " <>
+                 "--data 'wiki_page[options][authorized_editors_ids][0][editor_name]=[REDACTED]' " <>
+                 "--data 'wiki_page[options][authorized_editors_ids][0][id]=1' " <>
+                 "--data 'wiki_page[options][authorized_editors_ids][1][editor_name]=[REDACTED]' " <>
+                 "--data 'wiki_page[options][authorized_editors_ids][1][id]=2' " <>
+                 "--data 'wiki_page[options][is_published]=[REDACTED]' " <>
+                 "--data 'wiki_page[page]=baz' 'https://example.com'"
+    end
+
     test "follow_redirects option" do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(
