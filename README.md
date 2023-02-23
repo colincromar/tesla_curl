@@ -2,12 +2,12 @@
 
 TeslaCurl is a middleware for [Tesla](https://hex.pm/packages/tesla). It will log a curl command for each request.
 
-This has not officially released yet, but you can use it by adding the following to your `mix.exs` file:
+The package can be installed by adding `tesla_curl` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:tesla_curl, git: "https://github.com/colincromar/tesla_curl.git", branch: "main"}
+    {:tesla_curl, ~> "0.0.1-rc.1"}
   ]
 end
 ```
@@ -57,4 +57,4 @@ plug Tesla.Middleware.Curl, follow_redirects: true, redact_fields: ["api_token",
 
 ## License
 
-The source code is under the MIT License. Copyright (c) 2022- Colin Cromar.
+The source code is under the MIT License. Copyright (c) 2023- Colin Cromar.
