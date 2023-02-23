@@ -204,9 +204,10 @@ defmodule Tesla.Middleware.Curl do
 
   defp maybe_redact_field(key, value, opts) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      needs_redaction = Enum.any?(redact_fields, fn field ->
-        field == key || String.contains?(key, "[#{field}]")
-      end)
+      needs_redaction =
+        Enum.any?(redact_fields, fn field ->
+          field == key || String.contains?(key, "[#{field}]")
+        end)
 
       case needs_redaction do
         true -> "[REDACTED]"
