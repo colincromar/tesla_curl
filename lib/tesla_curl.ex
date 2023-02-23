@@ -17,7 +17,7 @@ defmodule Tesla.Middleware.Curl do
 
   ### Options
 
-  - `:follow_redirects` - true or false, will add the `-L` flag to the curl command
+  - `:follow_redirects` - boolean, will add the `-L` flag to the curl command
   - `:redact_fields` - a list of keys or regex capture groups to redact from the request body
   """
 
