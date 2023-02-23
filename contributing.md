@@ -4,7 +4,7 @@
 
 When opening an issue:
 
-* include the full **backtrace** with your error
+* include the full backtrace with your error, if applicable
 * include the relevant Tesla.Env data
 * include any output from TeslaCurl generated, with sensitive data redacted
 * list versions you are using: Elixir, Erlang, TeslaCurl, OS, etc.
