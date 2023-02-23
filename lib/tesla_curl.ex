@@ -206,7 +206,8 @@ defmodule Tesla.Middleware.Curl do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
       needs_redaction =
         Enum.any?(redact_fields, fn field ->
-          field == key || String.contains?("#{key}", "[#{field}]")
+          # Interpolate keys and fields to make this comparison string/key agnostic
+          "#{field}" == "#{key}" || String.contains?("#{key}", "[#{field}]")
         end)
 
       case needs_redaction do

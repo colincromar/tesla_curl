@@ -184,6 +184,22 @@ defmodule Tesla.Middleware.CurlTest do
                "curl -X POST --data 'foo' 'https://example.com'"
     end
 
+    test "map body with atom keys compare safely and are redacted properly" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :post,
+                   url: "https://example.com",
+                   headers: [],
+                   body: %{foo: "bar"}
+                 },
+                 [],
+                 [redact_fields: ["foo"]]
+               )
+             end) =~
+             "curl -X POST --data 'foo=[REDACTED]' 'https://example.com'"
+    end
+
     test "redacts fields down the nesting chain if body is a map" do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(
