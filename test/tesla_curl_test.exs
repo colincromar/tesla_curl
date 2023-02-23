@@ -109,7 +109,7 @@ defmodule Tesla.Middleware.CurlTest do
                    body: [{"foo", "bar"}, {"abc", "123"}]
                  },
                  [],
-                 redact_fields: ["foo", "authorization"]
+                 redact_fields: ["foo", "Authorization"]
                )
              end) =~
                "curl --header 'Authorization: [REDACTED]' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=[REDACTED]' " <>
@@ -182,6 +182,22 @@ defmodule Tesla.Middleware.CurlTest do
                )
              end) =~
                "curl -X POST --data 'foo' 'https://example.com'"
+    end
+
+    test "map body with atom keys compare safely and are redacted properly" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :post,
+                   url: "https://example.com",
+                   headers: [],
+                   body: %{foo: "bar"}
+                 },
+                 [],
+                 redact_fields: ["foo"]
+               )
+             end) =~
+               "curl -X POST --data 'foo=[REDACTED]' 'https://example.com'"
     end
 
     test "redacts fields down the nesting chain if body is a map" do
