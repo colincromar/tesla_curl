@@ -1,6 +1,24 @@
 defmodule Tesla.Middleware.Curl do
   @moduledoc """
   A middleware for the Tesla HTTP client that logs requests expressed in Curl.
+
+  Parses Tesla.Env structs into a curl command and logs it. This is useful for debugging
+  requests and responses.
+
+  ### Examples
+
+  ```
+  defmodule MyClient do
+    use Tesla
+
+    plug Tesla.Middleware.Curl, follow_redirects: true, redact_fields: ["api_token", "authorization"]
+  end
+  ```
+
+  ### Options
+
+  - `:follow_redirects` - true or false, will add the `-L` flag to the curl command
+  - `:redact_fields` - a list of keys or regex capture groups to redact from the request body
   """
 
   require Logger
