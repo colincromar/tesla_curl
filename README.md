@@ -48,11 +48,15 @@ will be replaced with `<password>[REDACTED]</password>` in the curl command.
 
 If you would like to enable the flag to follow redirects by default, supply `follow_redirects: true` in the options list.
 
+#### Compressed
+
+For compressed responses, you can supply the `compressed: true` option. This will add the `--compressed` flag to the curl command.
+
 Here is an example of options configuration with all options enabled:
 
 
 ```elixir
-plug Tesla.Middleware.Curl, follow_redirects: true, redact_fields: ["api_token", "authorization", "password"]
+plug Tesla.Middleware.Curl, follow_redirects: true, redact_fields: ["api_token", "authorization", "password"], compressed: true
 ```
 
 ## License

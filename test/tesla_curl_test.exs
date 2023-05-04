@@ -318,5 +318,31 @@ defmodule Tesla.Middleware.CurlTest do
                "curl -X POST --header 'Content-Type: application/json' --data 'baz[0][a]=b' --data 'baz[1][c]=d' " <>
                  "--data 'baz[2][e][f]=g' --data 'baz[3][h]=[REDACTED]' --data 'foo=bar' 'https://example.com'"
     end
+
+    test "handles compressed flag" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :post,
+                   url: "https://example.com",
+                   headers: [{"Content-Type", "application/json"}],
+                   body: %{
+                     "foo" => "bar",
+                     "baz" => [
+                       %{"a" => "b"},
+                       %{"c" => "d"},
+                       %{"e" => %{"f" => "g"}},
+                       %{"h" => "i"}
+                     ]
+                   }
+                 },
+                 [],
+                 redact_fields: ["h", "authorization"],
+                 compressed: true
+               )
+             end) =~
+               "curl -X POST --compressed --header 'Content-Type: application/json' --data 'baz[0][a]=b' --data 'baz[1][c]=d' " <>
+                 "--data 'baz[2][e][f]=g' --data 'baz[3][h]=[REDACTED]' --data 'foo=bar' 'https://example.com'"
+    end
   end
 end
