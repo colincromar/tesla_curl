@@ -19,6 +19,7 @@ defmodule Tesla.Middleware.Curl do
 
   - `:follow_redirects` - boolean, will add the `-L` flag to the curl command
   - `:redact_fields` - a list of keys or regex capture groups to redact from the request body
+  - `:compressed` - boolean, will add the `--compressed` flag to the curl command
   """
 
   require Logger
@@ -57,8 +58,9 @@ defmodule Tesla.Middleware.Curl do
     headers = parse_headers(env.headers, opts)
     query_params = format_query_params(env.query)
     parsed_parts = parse_parts_lazy(env.body.parts)
+    compressed = compressed_flag(opts)
 
-    "curl -X POST #{headers}#{parsed_parts} '#{env.url}#{query_params}'"
+    "curl -X POST #{compressed}#{headers}#{parsed_parts} '#{env.url}#{query_params}'"
   end
 
   # Handle requests with an Env that has a binary body, but may have query params
@@ -67,6 +69,7 @@ defmodule Tesla.Middleware.Curl do
     headers = parse_headers(env.headers, opts)
     location = location_flag(opts)
     method = translate_method(env.method)
+    compressed = compressed_flag(opts)
     body = env.body
 
     sanitized_body =
@@ -80,7 +83,7 @@ defmodule Tesla.Middleware.Curl do
 
     query_params = format_query_params(env.query)
 
-    "curl #{location}#{method}#{headers}#{flag_type} '#{sanitized_body}' '#{env.url}#{query_params}'"
+    "curl #{location}#{method}#{compressed}#{headers}#{flag_type} '#{sanitized_body}' '#{env.url}#{query_params}'"
   end
 
   # Handle requests with an Env that has query params.
@@ -88,12 +91,13 @@ defmodule Tesla.Middleware.Curl do
     flag_type = set_flag_type(env.headers)
     location = location_flag(opts)
     headers = parse_headers(env.headers, opts)
+    compressed = compressed_flag(opts)
     body = parse_body(env.body, flag_type, opts)
     method = translate_method(env.method)
 
     query_params = format_query_params(env.query)
 
-    "curl #{location}#{method}#{headers}#{body}'#{env.url}#{query_params}'"
+    "curl #{location}#{method}#{compressed}#{headers}#{body}'#{env.url}#{query_params}'"
   end
 
   # Parses the body parts of multipart requests into Curl format.
@@ -262,6 +266,17 @@ defmodule Tesla.Middleware.Curl do
     with {:ok, follow_redirects} <- Keyword.fetch(opts, :follow_redirects) do
       (follow_redirects == true) |> set_location_flag()
     else
+      _ -> ""
+    end
+  end
+
+  # Sets the compressed flag based on the compressed option
+  @spec compressed_flag(keyword() | nil) :: String.t()
+  defp compressed_flag(nil), do: ""
+
+  defp compressed_flag(opts) do
+    case Keyword.fetch(opts, :compressed) do
+      {:ok, true} -> "--compressed "
       _ -> ""
     end
   end
