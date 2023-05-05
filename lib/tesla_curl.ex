@@ -145,6 +145,7 @@ defmodule Tesla.Middleware.Curl do
   end
 
   # Redacts query parameters from the curl command
+  @spec sanitize_query_params(keyword(), keyword() | nil) :: keyword()
   defp sanitize_query_params([] = query_params, _opts), do: query_params
 
   defp sanitize_query_params(query_params, opts) do
