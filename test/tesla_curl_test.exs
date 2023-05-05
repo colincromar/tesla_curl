@@ -150,6 +150,24 @@ defmodule Tesla.Middleware.CurlTest do
                "curl 'https://example.com?param1=Hello%20World&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21'"
     end
 
+    test "when env contains query parameters and redacted fields are specified, fields are redacted," do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :get,
+                   url: "https://example.com",
+                   query: [
+                     param1: "Hello World",
+                     param2: "This is a param with spaces and *special* chars!"
+                   ]
+                 },
+                 [],
+                 redact_fields: [:param1]
+               )
+             end) =~
+               "curl 'https://example.com?param1=REDACTED&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21'"
+    end
+
     test "multipart requests" do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(multipart_env(), [], nil)
