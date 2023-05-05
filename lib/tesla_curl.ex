@@ -95,7 +95,9 @@ defmodule Tesla.Middleware.Curl do
     body = parse_body(env.body, flag_type, opts)
     method = translate_method(env.method)
 
-    query_params = format_query_params(env.query)
+    query_params =
+      sanitize_query_params(env.query, opts)
+      |> format_query_params()
 
     "curl #{location}#{method}#{compressed}#{headers}#{body}'#{env.url}#{query_params}'"
   end
@@ -140,6 +142,39 @@ defmodule Tesla.Middleware.Curl do
     parts
     |> Stream.map(&parse_part/1)
     |> Enum.join(" ")
+  end
+
+  # Redacts query parameters from the curl command
+  @spec sanitize_query_params(keyword() | map(), keyword() | nil) :: keyword()
+  defp sanitize_query_params([] = query_params, _opts), do: query_params
+  defp sanitize_query_params(query_params, []), do: query_params
+
+  defp sanitize_query_params(query_params, opts) when is_map(query_params) do
+    with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
+      Enum.reduce(redact_fields, query_params, fn field, acc ->
+        # If the acc map contains the field, redact it
+        case Map.has_key?(acc, field) do
+          true -> Map.put(acc, field, "REDACTED")
+          false -> acc
+        end
+      end)
+    else
+      _ -> query_params
+    end
+  end
+
+  defp sanitize_query_params(query_params, opts) when is_list(query_params) do
+    with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
+      Enum.reduce(redact_fields, query_params, fn field, acc ->
+        # If the acc keyword list contains the field, redact it
+        case Keyword.has_key?(acc, field) do
+          true -> Keyword.replace(acc, field, "REDACTED")
+          false -> acc
+        end
+      end)
+    else
+      _ -> query_params
+    end
   end
 
   # Filters items from a string request body, as defined in a capture regex
