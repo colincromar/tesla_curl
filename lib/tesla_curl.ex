@@ -145,10 +145,25 @@ defmodule Tesla.Middleware.Curl do
   end
 
   # Redacts query parameters from the curl command
-  @spec sanitize_query_params(keyword(), keyword() | nil) :: keyword()
+  @spec sanitize_query_params(keyword() | map(), keyword() | nil) :: keyword()
   defp sanitize_query_params([] = query_params, _opts), do: query_params
+  defp sanitize_query_params(query_params, []), do: query_params
 
-  defp sanitize_query_params(query_params, opts) do
+  defp sanitize_query_params(query_params, opts) when is_map(query_params) do
+    with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
+      Enum.reduce(redact_fields, query_params, fn field, acc ->
+        # If the acc map contains the field, redact it
+        case Map.has_key?(acc, field) do
+          true -> Map.put(acc, field, "REDACTED")
+          false -> acc
+        end
+      end)
+    else
+      _ -> query_params
+    end
+  end
+
+  defp sanitize_query_params(query_params, opts) when is_list(query_params) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
       Enum.reduce(redact_fields, query_params, fn field, acc ->
         # If the acc keyword list contains the field, redact it
