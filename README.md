@@ -7,7 +7,7 @@ The package can be installed by adding `tesla_curl` to your list of dependencies
 ```elixir
 def deps do
   [
-    {:tesla_curl, "~> 1.0.1"}
+    {:tesla_curl, "~> 1.1.0"}
   ]
 end
 ```
