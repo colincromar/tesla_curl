@@ -21,7 +21,7 @@ defmodule TeslaCurl.MixProject do
       project_url: @project_url,
       start_permanent: Mix.env() == :prod,
       source_url: @project_url,
-      version: "1.1.0"
+      version: "1.1.1"
     ]
   end
 

@@ -277,8 +277,28 @@ defmodule Tesla.Middleware.Curl do
   @spec needs_redact?(String.t() | Regex.t(), String.t()) :: boolean()
   defp needs_redact?(%Regex{} = regex, match_string), do: Regex.match?(regex, match_string)
 
-  defp needs_redact?(field, key),
-    do: "#{field}" == "#{key}" || String.contains?("#{key}", "[#{field}]")
+  defp needs_redact?(field, key) do
+    standard_field = standardize_fields_for_redaction(field)
+    standard_key = standardize_fields_for_redaction(key)
+
+    standard_field == standard_key ||
+      String.contains?(
+        standard_key,
+        "[#{standard_field}]"
+      )
+  end
+
+  # Standardizes the field for redaction comparison, converts to string and downcases
+  @spec standardize_fields_for_redaction(String.t() | atom()) :: String.t()
+  defp standardize_fields_for_redaction(field) when is_atom(field) do
+    to_string(field)
+    |> String.downcase()
+  end
+
+  defp standardize_fields_for_redaction(field) when is_binary(field) do
+    field
+    |> String.downcase()
+  end
 
   # Constructs the body string
   @spec construct_parameter(String.t(), String.t(), String.t()) :: String.t()
