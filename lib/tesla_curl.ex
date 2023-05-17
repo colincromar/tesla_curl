@@ -20,6 +20,8 @@ defmodule Tesla.Middleware.Curl do
   - `:follow_redirects` - boolean, will add the `-L` flag to the curl command
   - `:redact_fields` - a list of keys or regex capture groups to redact from the request body
   - `:compressed` - boolean, will add the `--compressed` flag to the curl command
+  - `:logger_level` - the level at which to log the curl command, as an atom. Must be one of -
+      `:emergency`, `:alert`, `:critical`, `:error`, `:warning`, `:notice`, `:info`, `:debug`
   """
 
   require Logger
@@ -45,13 +47,27 @@ defmodule Tesla.Middleware.Curl do
   defp log_request_as_curl(env, opts) do
     try do
       construct_curl(env, opts)
-      |> Logger.info()
+      |> log(opts)
     rescue
       e ->
         Logger.error(Exception.format(:error, e, __STACKTRACE__))
     end
 
     env
+  end
+
+  # Logs request as :info, or as the level specified in the opts
+  # Must be one of -
+  # :emergency, :alert, :critical, :error, :warning, :notice, :info, :debug
+  @spec log(String.t(), keyword() | nil) :: :ok
+  defp log(curl_request, nil), do: Logger.info(curl_request)
+
+  defp log(curl_request, opts) do
+    with {:ok, logger_level} <- Keyword.fetch(opts, :logger_level) do
+      Logger.log(logger_level, curl_request)
+    else
+      _ -> Logger.info(curl_request)
+    end
   end
 
   defp construct_curl(%Tesla.Env{body: %Tesla.Multipart{}} = env, opts) do
