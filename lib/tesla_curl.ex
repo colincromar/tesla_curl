@@ -246,7 +246,7 @@ defmodule Tesla.Middleware.Curl do
       needs_redaction =
         Enum.any?(redact_fields, fn field ->
           # Interpolate keys and fields to make this comparison string/key agnostic
-          "#{field}" == "#{key}" || String.contains?("#{key}", "[#{field}]")
+          needs_redact?(field, key)
         end)
 
       case needs_redaction do
@@ -257,6 +257,12 @@ defmodule Tesla.Middleware.Curl do
       _ -> value
     end
   end
+
+  @spec needs_redact?(String.t() | Regex.t(), String.t()) :: boolean()
+  defp needs_redact?(%Regex{} = regex, match_string), do: Regex.match?(regex, match_string)
+
+  defp needs_redact?(field, key),
+    do: "#{field}" == "#{key}" || String.contains?("#{key}", "[#{field}]")
 
   # Constructs the body string
   @spec construct_parameter(String.t(), String.t(), String.t()) :: String.t()
