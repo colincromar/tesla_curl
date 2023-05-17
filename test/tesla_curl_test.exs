@@ -93,7 +93,7 @@ defmodule Tesla.Middleware.CurlTest do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(env, [], [])
              end) =~
-               "(ArgumentError) cannot convert the given list to a string."
+               "[error] ** (ArgumentError) cannot convert the given list to a string."
     end
 
     test "when body or headers are supplied with redact_fields, redacts those fields" do
@@ -112,7 +112,7 @@ defmodule Tesla.Middleware.CurlTest do
                  redact_fields: ["foo", "Authorization"]
                )
              end) =~
-               "curl --header 'Authorization: [REDACTED]' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=[REDACTED]' " <>
+               "[info] curl --header 'Authorization: [REDACTED]' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=[REDACTED]' " <>
                  "--data-urlencode 'abc=123' 'https://example.com'"
     end
 
@@ -129,7 +129,7 @@ defmodule Tesla.Middleware.CurlTest do
                  redact_fields: [~r{<password>(.*?)</password>}]
                )
              end) =~
-               "curl --data '<username>some_username</username><password>[REDACTED]</password>' 'https://example.com'"
+               "[info] curl --data '<username>some_username</username><password>[REDACTED]</password>' 'https://example.com'"
     end
 
     test "handles regex captures in redact_fields for string request bodies when headers are supplied" do
@@ -145,7 +145,7 @@ defmodule Tesla.Middleware.CurlTest do
                  redact_fields: [~r{<password>(.*?)</password>}]
                )
              end) =~
-               "curl --header 'Content-Type: application/xml' --data '<username>some_username</username><password>[REDACTED]</password>' 'https://example.com'"
+               "[info] curl --header 'Content-Type: application/xml' --data '<username>some_username</username><password>[REDACTED]</password>' 'https://example.com'"
     end
 
     test "when env contains query parameters, they are url encoded" do
@@ -181,7 +181,7 @@ defmodule Tesla.Middleware.CurlTest do
                  redact_fields: [:param1]
                )
              end) =~
-               "curl 'https://example.com?param1=REDACTED&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21'"
+               "[info] curl 'https://example.com?param1=REDACTED&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21'"
     end
 
     test "when env contains query parameters in map and redacted fields are specified, fields are redacted," do
@@ -199,14 +199,14 @@ defmodule Tesla.Middleware.CurlTest do
                  redact_fields: [:param1]
                )
              end) =~
-               "curl 'https://example.com?param1=REDACTED&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21'"
+               "[info] curl 'https://example.com?param1=REDACTED&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21'"
     end
 
     test "multipart requests" do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(multipart_env(), [], nil)
              end) =~
-               "curl -X POST --header 'Authorization: Bearer 123' --header 'Content-Type: multipart/form-data' --form 'field1=foo' --form 'field2=bar' " <>
+               "[info] curl -X POST --header 'Authorization: Bearer 123' --header 'Content-Type: multipart/form-data' --form 'field1=foo' --form 'field2=bar' " <>
                  "--form 'file=@test/tesla/tesla_curl_test.exs' --form 'foobar=@test/tesla/test_helper.exs' " <>
                  "'https://example.com/hello'"
     end
@@ -215,7 +215,7 @@ defmodule Tesla.Middleware.CurlTest do
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(multipart_env(), [], redact_fields: ["Authorization"])
              end) =~
-               "curl -X POST --header 'Authorization: [REDACTED]' --header 'Content-Type: multipart/form-data' --form 'field1=foo' --form 'field2=bar' " <>
+               "[info] curl -X POST --header 'Authorization: [REDACTED]' --header 'Content-Type: multipart/form-data' --form 'field1=foo' --form 'field2=bar' " <>
                  "--form 'file=@test/tesla/tesla_curl_test.exs' --form 'foobar=@test/tesla/test_helper.exs' " <>
                  "'https://example.com/hello'"
     end
@@ -233,7 +233,7 @@ defmodule Tesla.Middleware.CurlTest do
                  []
                )
              end) =~
-               "curl -X POST --data 'foo' 'https://example.com'"
+               "[info] curl -X POST --data 'foo' 'https://example.com'"
     end
 
     test "map body with atom keys compare safely and are redacted properly" do
@@ -249,7 +249,7 @@ defmodule Tesla.Middleware.CurlTest do
                  redact_fields: ["foo"]
                )
              end) =~
-               "curl -X POST --data 'foo=[REDACTED]' 'https://example.com'"
+               "[info] curl -X POST --data 'foo=[REDACTED]' 'https://example.com'"
     end
 
     test "redacts fields down the nesting chain if body is a map" do
@@ -278,7 +278,7 @@ defmodule Tesla.Middleware.CurlTest do
                  redact_fields: ["name", "is_published", "editor_name"]
                )
              end) =~
-               "curl -X POST --data 'wiki_page[body]=bar' --data 'wiki_page[name]=[REDACTED]' " <>
+               "[info] curl -X POST --data 'wiki_page[body]=bar' --data 'wiki_page[name]=[REDACTED]' " <>
                  "--data 'wiki_page[options][authorized_editors_ids][0][editor_name]=[REDACTED]' " <>
                  "--data 'wiki_page[options][authorized_editors_ids][0][id]=1' " <>
                  "--data 'wiki_page[options][authorized_editors_ids][1][editor_name]=[REDACTED]' " <>
@@ -299,7 +299,7 @@ defmodule Tesla.Middleware.CurlTest do
                  follow_redirects: true
                )
              end) =~
-               "curl -L 'https://example.com'"
+               "[info] curl -L 'https://example.com'"
     end
 
     test "head and get requests do not have an -X flag" do
@@ -314,7 +314,7 @@ defmodule Tesla.Middleware.CurlTest do
                  nil
                )
              end) =~
-               "curl -I 'https://example.com'"
+               "[info] curl -I 'https://example.com'"
 
       assert capture_log(fn ->
                Tesla.Middleware.Curl.call(
@@ -327,7 +327,7 @@ defmodule Tesla.Middleware.CurlTest do
                  nil
                )
              end) =~
-               "curl 'https://example.com'"
+               "[info] curl 'https://example.com'"
     end
 
     test "body is urlencoded when content type is application/x-www-form-urlencoded" do
@@ -343,7 +343,7 @@ defmodule Tesla.Middleware.CurlTest do
                  []
                )
              end) =~
-               "curl -X POST --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=b%20a%20r' 'https://example.com'"
+               "[info] curl -X POST --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=b%20a%20r' 'https://example.com'"
     end
 
     test "handles bodies with nested maps and lists" do
@@ -367,7 +367,7 @@ defmodule Tesla.Middleware.CurlTest do
                  redact_fields: ["h", "authorization"]
                )
              end) =~
-               "curl -X POST --header 'Content-Type: application/json' --data 'baz[0][a]=b' --data 'baz[1][c]=d' " <>
+               "[info] curl -X POST --header 'Content-Type: application/json' --data 'baz[0][a]=b' --data 'baz[1][c]=d' " <>
                  "--data 'baz[2][e][f]=g' --data 'baz[3][h]=[REDACTED]' --data 'foo=bar' 'https://example.com'"
     end
 
@@ -393,8 +393,24 @@ defmodule Tesla.Middleware.CurlTest do
                  compressed: true
                )
              end) =~
-               "curl -X POST --compressed --header 'Content-Type: application/json' --data 'baz[0][a]=b' --data 'baz[1][c]=d' " <>
+               "[info] curl -X POST --compressed --header 'Content-Type: application/json' --data 'baz[0][a]=b' --data 'baz[1][c]=d' " <>
                  "--data 'baz[2][e][f]=g' --data 'baz[3][h]=[REDACTED]' --data 'foo=bar' 'https://example.com'"
+    end
+
+    test "handles different logger levels" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :post,
+                   url: "https://example.com",
+                   headers: [],
+                   body: %{foo: "bar"}
+                 },
+                 [],
+                 logger_level: :debug
+               )
+             end) =~
+               "[debug] curl -X POST --data 'foo=bar' 'https://example.com'"
     end
   end
 end

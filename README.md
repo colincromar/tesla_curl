@@ -52,11 +52,15 @@ If you would like to enable the flag to follow redirects by default, supply `fol
 
 For compressed responses, you can supply the `compressed: true` option. This will add the `--compressed` flag to the curl command.
 
+#### Logger Level
+
+You can supply the `logger_level` option to set the level of the logger. The default is `:info`. Must be one of `:debug`, `:info`, `:warn`, `:error`, `:fatal`, `:none`.
+
 Here is an example of options configuration with all options enabled:
 
 
 ```elixir
-plug Tesla.Middleware.Curl, follow_redirects: true, redact_fields: ["api_token", "authorization", "password"], compressed: true
+plug Tesla.Middleware.Curl, follow_redirects: true, redact_fields: ["api_token", "authorization", "password"], compressed: true, logger_level: :debug
 ```
 
 ## License
