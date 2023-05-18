@@ -412,5 +412,22 @@ defmodule Tesla.Middleware.CurlTest do
              end) =~
                "[debug] curl -X POST --data 'foo=bar' 'https://example.com'"
     end
+
+    test "redact_fields is atom/string and case agnostic" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :post,
+                   url: "https://example.com",
+                   headers: [{:Authorization, "some_token"}],
+                   body: %{foo: "bar"}
+                 },
+                 [],
+                 # Different cases and types than what is in Tesla.Env
+                 redact_fields: ["authorization", "Foo"]
+               )
+             end) =~
+               "[info] curl -X POST --header 'Authorization: [REDACTED]' --data 'foo=[REDACTED]' 'https://example.com'"
+    end
   end
 end
