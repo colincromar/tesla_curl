@@ -193,14 +193,15 @@ defmodule Tesla.Middleware.CurlTest do
                    url: "https://example.com",
                    query: %{
                      param1: "Hello World",
-                     param2: "This is a param with spaces and *special* chars!"
+                     param2: "This is a param with spaces and *special* chars!",
+                     param3: "This should be redacted"
                    }
                  },
                  [],
-                 redact_fields: [:param1]
+                 redact_fields: [:param1, "param3"]
                )
              end) =~
-               "[info] curl 'https://example.com?param1=REDACTED&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21'"
+               "[info] curl 'https://example.com?param1=REDACTED&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21&param3=REDACTED'"
     end
 
     test "multipart requests" do
