@@ -325,8 +325,11 @@ defmodule Tesla.Middleware.Curl do
   end
 
   @spec needs_redact?(String.t() | Regex.t(), String.t()) :: boolean()
-  defp needs_redact?(%Regex{} = regex, match_string) when is_binary(match_string), do: Regex.match?(regex, match_string)
-  defp needs_redact?(%Regex{} = regex, match_string) when is_atom(match_string), do: Regex.match?(regex, to_string(match_string))
+  defp needs_redact?(%Regex{} = regex, match_string) when is_binary(match_string),
+    do: Regex.match?(regex, match_string)
+
+  defp needs_redact?(%Regex{} = regex, match_string) when is_atom(match_string),
+    do: Regex.match?(regex, to_string(match_string))
 
   defp needs_redact?(field, key) do
     standard_field = standardize_fields_for_redaction(field)
