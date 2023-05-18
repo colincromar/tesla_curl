@@ -32,7 +32,7 @@ For example, if the TeslaCurl plug is defined above the Headers middleware, head
 You can pass a list of header keys or body field keys to be redacted in the options, like so: 
 `redact_fields: ["api_token", "authorization", "password"]`
 
-If supplied, the redacted fields will be replaced with `[REDACTED]` in the curl command.
+If supplied, the redacted fields will be replaced with `REDACTED` in the curl command.
 
 If a request's body is a string, you can use a regular expression with a capture group to redact the field. For example, if
 you were supplying Tesla with a string body that looked like this- 
@@ -42,7 +42,7 @@ you were supplying Tesla with a string body that looked like this-
 ```
 
 You could redact the password field by supplying the following option- `redact_fields: [~r{<password>(.*?)</password>}]`. This field 
-will be replaced with `<password>[REDACTED]</password>` in the curl command.
+will be replaced with `<password>REDACTED</password>` in the curl command.
 
 #### Follow Redirects
 

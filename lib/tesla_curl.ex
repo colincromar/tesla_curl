@@ -251,7 +251,7 @@ defmodule Tesla.Middleware.Curl do
     captures = Enum.map(match_set, fn match -> match |> List.last() end)
 
     Enum.reduce(captures, body, fn match, acc ->
-      String.replace(acc, match, "[REDACTED]", global: true)
+      String.replace(acc, match, "REDACTED", global: true)
     end)
   end
 
@@ -316,7 +316,7 @@ defmodule Tesla.Middleware.Curl do
         end)
 
       case needs_redaction do
-        true -> "[REDACTED]"
+        true -> "REDACTED"
         false -> value
       end
     else
