@@ -162,17 +162,12 @@ defmodule Tesla.Middleware.Curl do
 
   # Redacts query parameters from the curl command
   @spec sanitize_query_params(keyword() | map(), keyword() | nil) :: keyword()
-  defp sanitize_query_params([] = query_params, _opts), do: query_params
-  defp sanitize_query_params(query_params, []), do: query_params
+  defp sanitize_query_params(query_params, nil), do: query_params
 
   defp sanitize_query_params(query_params, opts) when is_map(query_params) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
       Enum.reduce(redact_fields, query_params, fn field, acc ->
-        # If the acc map contains the field, redact it
-        case Map.has_key?(acc, field) do
-          true -> Map.put(acc, field, "REDACTED")
-          false -> acc
-        end
+        query_param_redact_for_map(field, acc)
       end)
     else
       _ -> query_params
@@ -182,14 +177,70 @@ defmodule Tesla.Middleware.Curl do
   defp sanitize_query_params(query_params, opts) when is_list(query_params) do
     with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
       Enum.reduce(redact_fields, query_params, fn field, acc ->
-        # If the acc keyword list contains the field, redact it
-        case Keyword.has_key?(acc, field) do
-          true -> Keyword.replace(acc, field, "REDACTED")
-          false -> acc
-        end
+        query_param_redact_for_list(field, acc)
       end)
     else
       _ -> query_params
+    end
+  end
+
+  # Tesla's spec is a little loose for query params, they can be either a list or map.
+  # Handles field redaction for query params in a map, for atoms, strings, or Regex values in redact_fields
+  @spec query_param_redact_for_map(atom() | binary() | Regex.t(), map()) :: list()
+  defp query_param_redact_for_map(field, query_params) when is_atom(field) do
+    case Map.has_key?(query_params, field) do
+      true -> Map.put(query_params, field, "REDACTED")
+      false -> query_params
+    end
+  end
+
+  defp query_param_redact_for_map(field, query_params) when is_binary(field) do
+    field_as_atom = String.to_atom(field)
+
+    case Map.has_key?(query_params, field_as_atom) do
+      true -> Map.put(query_params, field_as_atom, "REDACTED")
+      false -> query_params
+    end
+  end
+
+  defp query_param_redact_for_map(%Regex{} = field, query_params) do
+    Enum.reduce(query_params, field, fn {k, _v}, _acc ->
+      f = standardize_fields_for_redaction(k)
+
+      case Regex.match?(field, f) do
+        true -> Map.put(query_params, k, "REDACTED")
+        false -> query_params
+      end
+    end)
+  end
+
+  # Tesla's spec is a little loose for query params, they can be either a list or map.
+  # Handles field redaction for query params in a list, for atoms, strings, or Regex values in redact_fields
+  @spec query_param_redact_for_list(atom() | binary() | Regex.t(), list()) :: list()
+  defp query_param_redact_for_list(%Regex{} = field, query_params) do
+    Enum.reduce(query_params, field, fn {k, _v}, _acc ->
+      f = standardize_fields_for_redaction(k)
+
+      case Regex.match?(field, f) do
+        true -> Keyword.replace(query_params, k, "REDACTED")
+        false -> query_params
+      end
+    end)
+  end
+
+  defp query_param_redact_for_list(field, query_params) when is_atom(field) do
+    case Keyword.has_key?(query_params, field) do
+      true -> Keyword.replace(query_params, field, "REDACTED")
+      false -> query_params
+    end
+  end
+
+  defp query_param_redact_for_list(field, query_params) when is_binary(field) do
+    field_as_atom = String.to_atom(field)
+
+    case Keyword.has_key?(query_params, field_as_atom) do
+      true -> Keyword.replace(query_params, field_as_atom, "REDACTED")
+      false -> query_params
     end
   end
 
