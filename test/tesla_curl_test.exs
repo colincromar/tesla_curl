@@ -432,5 +432,21 @@ defmodule Tesla.Middleware.CurlTest do
              end) =~
                "[info] curl -X POST --header 'Authorization: REDACTED' --data 'foo=REDACTED' 'https://example.com'"
     end
+
+    test "handles multiple regexes" do
+      assert capture_log(fn ->
+        Tesla.Middleware.Curl.call(
+          %Tesla.Env{
+            method: :get,
+            url: "https://example.com",
+            query: [
+            ]
+          },
+          [],
+          redact_fields: [~r/<username>(.*?)<\/username>/, ~r/<password>(.*?)<\/password>/]
+        )
+      end) =~
+        "[info] curl 'https://example.com'"
+    end
   end
 end
