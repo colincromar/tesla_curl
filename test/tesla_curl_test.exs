@@ -123,13 +123,13 @@ defmodule Tesla.Middleware.CurlTest do
                    method: :get,
                    url: "https://example.com",
                    headers: [],
-                   body: "<username>some_username</username><password>some password</password>"
+                   body: "<username>some_username</username><password>some password</password><field1>some field</field1>"
                  },
                  [],
-                 redact_fields: [~r{<password>(.*?)</password>}, ~r/<password>(.*?)<\/password>/]
+                 redact_fields: [~r{<password>(.*?)</password>}, ~r/<username>(.*?)<\/username>/]
                )
              end) =~
-               "[info] curl --data '<username>some_username</username><password>REDACTED</password>' 'https://example.com'"
+               "[info] curl --data '<username>REDACTED</username><password>REDACTED</password><field1>some field</field1>' 'https://example.com'"
     end
 
     test "handles regex captures in redact_fields for string request bodies when headers are supplied" do
