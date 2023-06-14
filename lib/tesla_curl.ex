@@ -218,7 +218,6 @@ defmodule Tesla.Middleware.Curl do
   # Handles field redaction for query params in a list, for atoms, strings, or Regex values in redact_fields
   @spec query_param_redact_for_list(atom() | binary() | Regex.t(), list()) :: list()
   defp query_param_redact_for_list(%Regex{} = field, query_params) do
-    # For each item in query_params, replace the value with "REDACTED" if it matches field, else return the original value
     Enum.map(query_params, fn {k, v} ->
       f = standardize_fields_for_redaction(k)
 
