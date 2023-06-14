@@ -123,13 +123,14 @@ defmodule Tesla.Middleware.CurlTest do
                    method: :get,
                    url: "https://example.com",
                    headers: [],
-                   body: "<username>some_username</username><password>some password</password>"
+                   body:
+                     "<username>some_username</username><password>some password</password><field1>some field</field1>"
                  },
                  [],
-                 redact_fields: [~r{<password>(.*?)</password>}]
+                 redact_fields: [~r{<password>(.*?)</password>}, ~r/<username>(.*?)<\/username>/]
                )
              end) =~
-               "[info] curl --data '<username>some_username</username><password>REDACTED</password>' 'https://example.com'"
+               "[info] curl --data '<username>REDACTED</username><password>REDACTED</password><field1>some field</field1>' 'https://example.com'"
     end
 
     test "handles regex captures in redact_fields for string request bodies when headers are supplied" do
@@ -431,6 +432,40 @@ defmodule Tesla.Middleware.CurlTest do
                )
              end) =~
                "[info] curl -X POST --header 'Authorization: REDACTED' --data 'foo=REDACTED' 'https://example.com'"
+    end
+
+    test "handles multiple regexes with empty query list" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :get,
+                   url: "https://example.com",
+                   query: []
+                 },
+                 [],
+                 redact_fields: [~r/<username>(.*?)<\/username>/, ~r/<password>(.*?)<\/password>/]
+               )
+             end) =~
+               "[info] curl 'https://example.com'"
+    end
+
+    test "handles multiple regexes with empty query map" do
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.call(
+                 %Tesla.Env{
+                   method: :get,
+                   url: "https://example.com",
+                   query: %{}
+                 },
+                 [],
+                 redact_fields: [
+                   ~r/<username>(.*?)<\/username>/,
+                   ~r/<password>(.*?)<\/password>/,
+                   "field1"
+                 ]
+               )
+             end) =~
+               "[info] curl 'https://example.com'"
     end
   end
 end

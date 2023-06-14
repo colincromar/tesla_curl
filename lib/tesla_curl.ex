@@ -148,6 +148,8 @@ defmodule Tesla.Middleware.Curl do
   @spec format_query_params(keyword() | nil) :: String.t()
   defp format_query_params([]), do: nil
 
+  defp format_query_params(params) when params == %{}, do: nil
+
   defp format_query_params(query) do
     "?" <> URI.encode_query(Enum.into(query, %{}), :rfc3986)
   end
@@ -203,8 +205,10 @@ defmodule Tesla.Middleware.Curl do
     end
   end
 
+  defp query_param_redact_for_map(%Regex{}, %{}), do: %{}
+
   defp query_param_redact_for_map(%Regex{} = field, query_params) do
-    Enum.reduce(query_params, field, fn {k, _v}, _acc ->
+    Enum.map(query_params, fn {k, _v} ->
       f = standardize_fields_for_redaction(k)
 
       case Regex.match?(field, f) do
@@ -212,18 +216,19 @@ defmodule Tesla.Middleware.Curl do
         false -> query_params
       end
     end)
+    |> List.first()
   end
 
   # Tesla's spec is a little loose for query params, they can be either a list or map.
   # Handles field redaction for query params in a list, for atoms, strings, or Regex values in redact_fields
   @spec query_param_redact_for_list(atom() | binary() | Regex.t(), list()) :: list()
   defp query_param_redact_for_list(%Regex{} = field, query_params) do
-    Enum.reduce(query_params, field, fn {k, _v}, _acc ->
+    Enum.map(query_params, fn {k, v} ->
       f = standardize_fields_for_redaction(k)
 
       case Regex.match?(field, f) do
-        true -> Keyword.replace(query_params, k, "REDACTED")
-        false -> query_params
+        true -> {k, "REDACTED"}
+        false -> {k, v}
       end
     end)
   end
