@@ -123,7 +123,8 @@ defmodule Tesla.Middleware.CurlTest do
                    method: :get,
                    url: "https://example.com",
                    headers: [],
-                   body: "<username>some_username</username><password>some password</password><field1>some field</field1>"
+                   body:
+                     "<username>some_username</username><password>some password</password><field1>some field</field1>"
                  },
                  [],
                  redact_fields: [~r{<password>(.*?)</password>}, ~r/<username>(.*?)<\/username>/]
@@ -457,7 +458,11 @@ defmodule Tesla.Middleware.CurlTest do
                    query: %{}
                  },
                  [],
-                 redact_fields: [~r/<username>(.*?)<\/username>/, ~r/<password>(.*?)<\/password>/, "field1"]
+                 redact_fields: [
+                   ~r/<username>(.*?)<\/username>/,
+                   ~r/<password>(.*?)<\/password>/,
+                   "field1"
+                 ]
                )
              end) =~
                "[info] curl 'https://example.com'"
