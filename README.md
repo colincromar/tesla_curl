@@ -65,4 +65,4 @@ plug Tesla.Middleware.Curl, follow_redirects: true, redact_fields: ["api_token",
 
 ## License
 
-The source code is under the MIT License. Copyright (c) 2023- Colin Cromar.
+The source code is under the MIT License. Copyright (c) 2023-2024 Colin Cromar.
