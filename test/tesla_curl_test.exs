@@ -4,12 +4,10 @@ defmodule Tesla.Middleware.CurlTest do
   import ExUnit.CaptureLog
 
   @base_url "https://example.com"
-  @json_headers [{"Authorization", "Bearer 123"}, {"Content-Type", "application/json"}]
-  @form_headers [
-    {"Authorization", "Bearer 123"},
-    {"Content-Type", "application/x-www-form-urlencoded"}
-  ]
-  @multipart_headers [{"Authorization", "Bearer 123"}, {"Content-Type", "multipart/form-data"}]
+  @auth_header {"Authorization", "Bearer 123"}
+  @json_headers [@auth_header | [{"Content-Type", "application/json"}]]
+  @form_headers [@auth_header | [{"Content-Type", "application/x-www-form-urlencoded"}]]
+  @multipart_headers [@auth_header | [{"Content-Type", "multipart/form-data"}]]
 
   defp build_env(method, url, headers \\ [], body \\ nil, query \\ []) do
     %Tesla.Env{
