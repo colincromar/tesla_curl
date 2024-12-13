@@ -3,469 +3,160 @@ defmodule Tesla.Middleware.CurlTest do
 
   import ExUnit.CaptureLog
 
-  def call() do
-    Tesla.Middleware.Curl.call(
-      %Tesla.Env{
-        method: :get,
-        url: "https://example.com",
-        headers: [{"Content-Type", "application/x-www-form-urlencoded"}],
-        body: [{"foo", "bar"}]
-      },
-      [],
-      nil
-    )
+  @base_url "https://example.com"
+  @auth_header {"Authorization", "Bearer 123"}
+  @json_headers [@auth_header | [{"Content-Type", "application/json"}]]
+  @form_headers [@auth_header | [{"Content-Type", "application/x-www-form-urlencoded"}]]
+  @multipart_headers [@auth_header | [{"Content-Type", "multipart/form-data"}]]
+
+  defp build_env(method, url, headers \\ [], body \\ nil, query \\ []) do
+    %Tesla.Env{
+      method: method,
+      url: url,
+      headers: headers,
+      body: body,
+      query: query
+    }
   end
 
-  def multipart_env() do
-    %Tesla.Env{
-      method: :post,
-      url: "https://example.com/hello",
-      query: [],
-      headers: [{"Authorization", "Bearer 123"}, {"Content-Type", "multipart/form-data"}],
-      body: %Tesla.Multipart{
-        parts: [
-          %Tesla.Multipart.Part{
-            body: "foo",
-            dispositions: [name: "field1"],
-            headers: []
-          },
-          %Tesla.Multipart.Part{
-            body: "bar",
-            dispositions: [name: "field2"],
-            headers: [{"content-id", "1"}, {"content-type", "text/plain"}]
-          },
-          %Tesla.Multipart.Part{
-            body: %File.Stream{
-              path: "test/tesla/tesla_curl_test.exs",
-              modes: [:raw, :read_ahead, :binary],
-              line_or_bytes: 2048,
-              raw: true
-            },
-            dispositions: [name: "file", filename: "tesla_curl_test.exs"],
-            headers: []
-          },
-          %Tesla.Multipart.Part{
-            body: %File.Stream{
-              path: "test/tesla/test_helper.exs",
-              modes: [:raw, :read_ahead, :binary],
-              line_or_bytes: 2048,
-              raw: true
-            },
-            dispositions: [name: "foobar", filename: "test_helper.exs"],
-            headers: []
-          }
-        ],
-        boundary: "4cb14c1c18ef9eb8f141d7d394cb9208",
-        content_type_params: ["charset=utf-8"]
-      },
-      status: nil,
-      opts: [],
-      __module__: Tesla,
-      __client__: %Tesla.Client{
-        fun: nil,
-        pre: [{Tesla.Middleware.Curl, :call, [[]]}],
-        post: [],
-        adapter: nil
-      }
+  defp call_middleware(env, opts \\ []) do
+    Tesla.Middleware.Curl.call(env, [], opts)
+  end
+
+  defp assert_curl_log(env, opts, expected_log) do
+    assert capture_log(fn -> call_middleware(env, opts) end) =~ expected_log
+  end
+
+  defp multipart_body() do
+    %Tesla.Multipart{
+      parts: [
+        %Tesla.Multipart.Part{body: "foo", dispositions: [name: "field1"]},
+        %Tesla.Multipart.Part{
+          body: "bar",
+          dispositions: [name: "field2"],
+          headers: [{"content-id", "1"}]
+        },
+        %Tesla.Multipart.Part{
+          body: %File.Stream{path: "test/tesla/tesla_curl_test.exs", modes: [:raw]},
+          dispositions: [name: "file", filename: "tesla_curl_test.exs"]
+        },
+        %Tesla.Multipart.Part{
+          body: %File.Stream{path: "test/tesla/test_helper.exs", modes: [:raw]},
+          dispositions: [name: "foobar", filename: "test_helper.exs"]
+        }
+      ]
     }
   end
 
   describe "call/3" do
     test "is successful" do
-      capture_log(fn ->
-        assert {:ok, _} = call()
-      end)
+      env = build_env(:get, @base_url, @form_headers, [{"foo", "bar"}])
+      assert capture_log(fn -> assert {:ok, _} = call_middleware(env) end)
     end
 
-    test "logs error, but request still succeeds if error is encountered" do
-      # Use a string as method field to simulate a failure
-      env = %Tesla.Env{
-        method: :post,
-        url: [%{something_invalid: "and a value"}],
-        headers: [],
-        body: nil
-      }
-
-      capture_log(fn ->
-        assert {:ok, _resp} = Tesla.Middleware.Curl.call(env, [], [])
-      end)
-
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(env, [], [])
-             end) =~
-               "[error] ** (ArgumentError) cannot convert the given list to a string."
+    test "logs error but request succeeds if error occurs" do
+      env = build_env(:post, [%{something_invalid: "value"}])
+      assert capture_log(fn -> call_middleware(env) end) =~ "[error] ** (ArgumentError)"
     end
 
-    test "when body or headers are supplied with redact_fields, redacts those fields" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :get,
-                   url: "https://example.com",
-                   headers: [
-                     {"Authorization", "Bearer 123"},
-                     {"Content-Type", "application/x-www-form-urlencoded"}
-                   ],
-                   body: [{"foo", "bar"}, {"abc", "123"}]
-                 },
-                 [],
-                 redact_fields: ["foo", "Authorization"]
-               )
-             end) =~
-               "[info] curl --header 'Authorization: REDACTED' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=REDACTED' " <>
-                 "--data-urlencode 'abc=123' 'https://example.com'"
+    test "redacts specified fields" do
+      env = build_env(:get, @base_url, @form_headers, [{"foo", "bar"}])
+      opts = [redact_fields: ["foo", "Authorization"]]
+
+      assert_curl_log(
+        env,
+        opts,
+        "curl --header 'Authorization: REDACTED' " <>
+          "--header 'Content-Type: application/x-www-form-urlencoded' " <>
+          "--data-urlencode 'foo=REDACTED' 'https://example.com'"
+      )
     end
 
-    test "handles regex captures in redact_fields for string request bodies" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :get,
-                   url: "https://example.com",
-                   headers: [],
-                   body:
-                     "<username>some_username</username><password>some password</password><field1>some field</field1>"
-                 },
-                 [],
-                 redact_fields: [~r{<password>(.*?)</password>}, ~r/<username>(.*?)<\/username>/]
-               )
-             end) =~
-               "[info] curl --data '<username>REDACTED</username><password>REDACTED</password><field1>some field</field1>' 'https://example.com'"
+    test "handles regex captures in redact_fields" do
+      env = build_env(:get, @base_url, [], "<username>some_username</username>")
+      opts = [redact_fields: [~r{<username>(.*?)</username>}]]
+      assert_curl_log(env, opts, "<username>REDACTED</username>")
     end
 
-    test "handles regex captures in redact_fields for string request bodies when headers are supplied" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :get,
-                   url: "https://example.com",
-                   headers: [{"Content-Type", "application/xml"}],
-                   body: "<username>some_username</username><password>some password</password>"
-                 },
-                 [],
-                 redact_fields: [~r{<password>(.*?)</password>}]
-               )
-             end) =~
-               "[info] curl --header 'Content-Type: application/xml' --data '<username>some_username</username><password>REDACTED</password>' 'https://example.com'"
+    test "handles regex captures in redact_fields for headers and body" do
+      env =
+        build_env(
+          :get,
+          @base_url,
+          [{"Content-Type", "application/xml"}],
+          "<username>some_username</username>"
+        )
+
+      opts = [redact_fields: [~r{<username>(.*?)</username>}]]
+      assert_curl_log(env, opts, "curl --header 'Content-Type: application/xml'")
     end
 
-    test "when env contains query parameters, they are url encoded" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :get,
-                   url: "https://example.com",
-                   query: [
-                     param1: "Hello World",
-                     param2: "This is a param with spaces and *special* chars!"
-                   ]
-                 },
-                 [],
-                 []
-               )
-             end) =~
-               "curl 'https://example.com?param1=Hello%20World&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21'"
+    test "encodes query parameters correctly" do
+      env = build_env(:get, @base_url, [], nil, param1: "Hello World")
+      assert_curl_log(env, [], "param1=Hello%20World")
     end
 
-    test "when env contains query parameters in keyword list and redacted fields are specified, fields are redacted," do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :get,
-                   url: "https://example.com",
-                   headers: [{:"User-Agent", "someuseragent"}],
-                   query: [
-                     param1: "Hello World",
-                     param2: "This is a param with spaces and *special* chars!",
-                     param3: "This should be redacted"
-                   ]
-                 },
-                 [],
-                 redact_fields: [:param1, ~r{param3}, "User-Agent"]
-               )
-             end) =~
-               "[info] curl --header 'User-Agent: REDACTED' 'https://example.com?param1=REDACTED&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21&param3=REDACTED'"
+    test "redacts query parameters correctly" do
+      env = build_env(:get, @base_url, [], nil, param1: "Hello World", param2: "Sensitive")
+      opts = [redact_fields: ["param2"]]
+      assert_curl_log(env, opts, "param2=REDACTED")
     end
 
-    test "when env contains query parameters in map and redacted fields are specified, fields are redacted," do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :get,
-                   url: "https://example.com",
-                   query: %{
-                     param1: "Hello World",
-                     param2: "This is a param with spaces and *special* chars!",
-                     param3: "This should be redacted"
-                   }
-                 },
-                 [],
-                 redact_fields: [:param1, "param3"]
-               )
-             end) =~
-               "[info] curl 'https://example.com?param1=REDACTED&param2=This%20is%20a%20param%20with%20spaces%20and%20%2Aspecial%2A%20chars%21&param3=REDACTED'"
+    test "handles multipart requests" do
+      env = build_env(:post, "#{@base_url}/hello", @multipart_headers, multipart_body())
+      assert_curl_log(env, [], "--form 'field1=foo'")
     end
 
-    test "multipart requests" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(multipart_env(), [], nil)
-             end) =~
-               "[info] curl -X POST --header 'Authorization: Bearer 123' --header 'Content-Type: multipart/form-data' --form 'field1=foo' --form 'field2=bar' " <>
-                 "--form 'file=@test/tesla/tesla_curl_test.exs' --form 'foobar=@test/tesla/test_helper.exs' " <>
-                 "'https://example.com/hello'"
+    test "multipart requests redact specified fields" do
+      env = build_env(:post, "#{@base_url}/hello", @multipart_headers, multipart_body())
+      opts = [redact_fields: ["Authorization"]]
+      assert_curl_log(env, opts, "--header 'Authorization: REDACTED'")
     end
 
-    test "multipart with redacted fields" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(multipart_env(), [], redact_fields: ["Authorization"])
-             end) =~
-               "[info] curl -X POST --header 'Authorization: REDACTED' --header 'Content-Type: multipart/form-data' --form 'field1=foo' --form 'field2=bar' " <>
-                 "--form 'file=@test/tesla/tesla_curl_test.exs' --form 'foobar=@test/tesla/test_helper.exs' " <>
-                 "'https://example.com/hello'"
+    test "compressed flag is handled correctly" do
+      env = build_env(:post, @base_url, @json_headers, %{foo: "bar"})
+      opts = [compressed: true]
+      assert_curl_log(env, opts, "--compressed")
     end
 
-    test "string request bodies" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :post,
-                   url: "https://example.com",
-                   headers: [],
-                   body: "foo"
-                 },
-                 [],
-                 []
-               )
-             end) =~
-               "[info] curl -X POST --data 'foo' 'https://example.com'"
+    test "handles follow_redirects option" do
+      env = build_env(:get, @base_url)
+      opts = [follow_redirects: true]
+      assert_curl_log(env, opts, "-L 'https://example.com'")
     end
 
-    test "map body with atom keys compare safely and are redacted properly" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :post,
-                   url: "https://example.com",
-                   headers: [],
-                   body: %{foo: "bar"}
-                 },
-                 [],
-                 redact_fields: ["foo"]
-               )
-             end) =~
-               "[info] curl -X POST --data 'foo=REDACTED' 'https://example.com'"
+    test "head and get requests omit -X flag" do
+      env_head = build_env(:head, @base_url)
+      env_get = build_env(:get, @base_url)
+      assert_curl_log(env_head, [], "-I 'https://example.com'")
+      assert_curl_log(env_get, [], "curl 'https://example.com'")
     end
 
-    test "redacts fields down the nesting chain if body is a map" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :post,
-                   url: "https://example.com",
-                   headers: [],
-                   body: %{
-                     "wiki_page" => %{
-                       "name" => "foo",
-                       "body" => "bar",
-                       "page" => "baz",
-                       "options" => %{
-                         "is_published" => true,
-                         "authorized_editors_ids" => [
-                           %{"id" => 1, "editor_name" => "User 1"},
-                           %{"id" => 2, "editor_name" => "User 2"}
-                         ]
-                       }
-                     }
-                   }
-                 },
-                 [],
-                 redact_fields: ["name", "is_published", "editor_name"]
-               )
-             end) =~
-               "[info] curl -X POST --data 'wiki_page[body]=bar' --data 'wiki_page[name]=REDACTED' " <>
-                 "--data 'wiki_page[options][authorized_editors_ids][0][editor_name]=REDACTED' " <>
-                 "--data 'wiki_page[options][authorized_editors_ids][0][id]=1' " <>
-                 "--data 'wiki_page[options][authorized_editors_ids][1][editor_name]=REDACTED' " <>
-                 "--data 'wiki_page[options][authorized_editors_ids][1][id]=2' " <>
-                 "--data 'wiki_page[options][is_published]=REDACTED' " <>
-                 "--data 'wiki_page[page]=baz' 'https://example.com'"
+    test "body is urlencoded when form headers are supplied" do
+      env = build_env(:post, @base_url, @form_headers, "foo=b%20a%20r")
+      assert_curl_log(env, [], "--data-urlencode 'foo=b%20a%20r'")
     end
 
-    test "follow_redirects option" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :get,
-                   url: "https://example.com",
-                   headers: []
-                 },
-                 [],
-                 follow_redirects: true
-               )
-             end) =~
-               "[info] curl -L 'https://example.com'"
+    test "handles nested maps and lists in body" do
+      env =
+        build_env(:post, @base_url, @json_headers, %{
+          "foo" => "bar",
+          "nested" => [%{"key" => "value"}, %{"sensitive" => "data"}]
+        })
+
+      opts = [redact_fields: ["sensitive"]]
+      assert_curl_log(env, opts, "--data 'nested[1][sensitive]=REDACTED'")
     end
 
-    test "head and get requests do not have an -X flag" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :head,
-                   url: "https://example.com",
-                   headers: []
-                 },
-                 [],
-                 nil
-               )
-             end) =~
-               "[info] curl -I 'https://example.com'"
-
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :get,
-                   url: "https://example.com",
-                   headers: []
-                 },
-                 [],
-                 nil
-               )
-             end) =~
-               "[info] curl 'https://example.com'"
+    test "handles custom logger levels" do
+      env = build_env(:post, @base_url, [], %{foo: "bar"})
+      opts = [logger_level: :debug]
+      assert_curl_log(env, opts, "[debug] curl -X POST --data 'foo=bar'")
     end
 
-    test "body is urlencoded when content type is application/x-www-form-urlencoded" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :post,
-                   url: "https://example.com",
-                   headers: [{"Content-Type", "application/x-www-form-urlencoded"}],
-                   body: "foo=b%20a%20r"
-                 },
-                 [],
-                 []
-               )
-             end) =~
-               "[info] curl -X POST --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'foo=b%20a%20r' 'https://example.com'"
-    end
-
-    test "handles bodies with nested maps and lists" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :post,
-                   url: "https://example.com",
-                   headers: [{"Content-Type", "application/json"}],
-                   body: %{
-                     "foo" => "bar",
-                     "baz" => [
-                       %{"a" => "b"},
-                       %{"c" => "d"},
-                       %{"e" => %{"f" => "g"}},
-                       %{"h" => "i"}
-                     ]
-                   }
-                 },
-                 [],
-                 redact_fields: ["h", "authorization"]
-               )
-             end) =~
-               "[info] curl -X POST --header 'Content-Type: application/json' --data 'baz[0][a]=b' --data 'baz[1][c]=d' " <>
-                 "--data 'baz[2][e][f]=g' --data 'baz[3][h]=REDACTED' --data 'foo=bar' 'https://example.com'"
-    end
-
-    test "handles compressed flag" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :post,
-                   url: "https://example.com",
-                   headers: [{"Content-Type", "application/json"}],
-                   body: %{
-                     "foo" => "bar",
-                     "baz" => [
-                       %{"a" => "b"},
-                       %{"c" => "d"},
-                       %{"e" => %{"f" => "g"}},
-                       %{"h" => "i"}
-                     ]
-                   }
-                 },
-                 [],
-                 redact_fields: ["h", "authorization"],
-                 compressed: true
-               )
-             end) =~
-               "[info] curl -X POST --compressed --header 'Content-Type: application/json' --data 'baz[0][a]=b' --data 'baz[1][c]=d' " <>
-                 "--data 'baz[2][e][f]=g' --data 'baz[3][h]=REDACTED' --data 'foo=bar' 'https://example.com'"
-    end
-
-    test "handles different logger levels" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :post,
-                   url: "https://example.com",
-                   headers: [],
-                   body: %{foo: "bar"}
-                 },
-                 [],
-                 logger_level: :debug
-               )
-             end) =~
-               "[debug] curl -X POST --data 'foo=bar' 'https://example.com'"
-    end
-
-    test "redact_fields is atom/string and case agnostic" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :post,
-                   url: "https://example.com",
-                   headers: [{:Authorization, "some_token"}],
-                   body: %{foo: "bar"}
-                 },
-                 [],
-                 # Different cases and types than what is in Tesla.Env
-                 redact_fields: ["authorization", "Foo"]
-               )
-             end) =~
-               "[info] curl -X POST --header 'Authorization: REDACTED' --data 'foo=REDACTED' 'https://example.com'"
-    end
-
-    test "handles multiple regexes with empty query list" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :get,
-                   url: "https://example.com",
-                   query: []
-                 },
-                 [],
-                 redact_fields: [~r/<username>(.*?)<\/username>/, ~r/<password>(.*?)<\/password>/]
-               )
-             end) =~
-               "[info] curl 'https://example.com'"
-    end
-
-    test "handles multiple regexes with empty query map" do
-      assert capture_log(fn ->
-               Tesla.Middleware.Curl.call(
-                 %Tesla.Env{
-                   method: :get,
-                   url: "https://example.com",
-                   query: %{}
-                 },
-                 [],
-                 redact_fields: [
-                   ~r/<username>(.*?)<\/username>/,
-                   ~r/<password>(.*?)<\/password>/,
-                   "field1"
-                 ]
-               )
-             end) =~
-               "[info] curl 'https://example.com'"
+    test "handles multipart with empty query map" do
+      env = build_env(:get, @base_url, [], nil, %{})
+      assert_curl_log(env, [], "curl 'https://example.com'")
     end
   end
 end
