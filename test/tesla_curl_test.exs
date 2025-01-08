@@ -468,4 +468,40 @@ defmodule Tesla.Middleware.CurlTest do
                "[info] curl 'https://example.com'"
     end
   end
+
+  describe "log/2" do
+    test "parses the request, logs it, and returns :ok" do
+      assert capture_log(fn ->
+        env = %Tesla.Env{
+          method: :post,
+          url: "https://example.com",
+          headers: [{:Authorization, "some_token"}],
+          body: %{foo: "bar"}
+        }
+
+        options = [redact_fields: ["authorization", "Foo"]]
+
+        Tesla.Middleware.Curl.log(env, options)
+      end) =~
+        "[info] curl -X POST --header 'Authorization: REDACTED' --data 'foo=REDACTED' 'https://example.com'"
+    end
+
+    test "logs error and returns :ok" do
+      env = %Tesla.Env{
+        method: :post,
+        url: [%{something_invalid: "and a value"}],
+        headers: [],
+        body: nil
+      }
+
+      capture_log(fn ->
+        assert :ok = Tesla.Middleware.Curl.log(env, [])
+      end)
+
+      assert capture_log(fn ->
+               Tesla.Middleware.Curl.log(env, [])
+             end) =~
+               "[error] ** (ArgumentError) cannot convert the given list to a string."
+    end
+  end
 end
