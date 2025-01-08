@@ -14,7 +14,7 @@ end
 
 ## Usage
 
-### As a middleware with Plug:
+#### As a middleware with Plug:
 ```elixir
 defmodule HelloWorld do
   use Tesla
@@ -26,7 +26,7 @@ end
 Note - Plugs are executed in the order they are defined. As such, it is recommended you define TeslaCurl below other middlewares.
 For example, if the TeslaCurl plug is defined above the Headers middleware, headers will not be included in the curl log output.
 
-### Without Plug:
+#### Without Plug:
 If you prefer to use this library without the plug, you can use the `TeslaCurl` module directly with `log/2`:
 
 ```elixir
