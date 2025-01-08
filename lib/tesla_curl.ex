@@ -36,37 +36,38 @@ defmodule Tesla.Middleware.Curl do
   """
   @spec call(Tesla.Env.t(), Tesla.Env.stack(), keyword() | nil) :: Tesla.Env.result()
   def call(env, next, opts \\ []) do
-    env
-    |> log_request_as_curl(opts)
-    |> Tesla.run(next)
+    log(env, opts)
+    Tesla.run(env, next)
   end
 
-  # Calls the function to construct the curl command and logs it. If an error occurs,
-  # it will be logged, and the request will continue as normal.
-  @spec log_request_as_curl(Tesla.Env.t(), keyword() | nil) :: Tesla.Env.t()
-  defp log_request_as_curl(env, opts) do
+  @doc """
+  Calls the function to construct the curl command and logs it. If an error occurs,
+  it will be logged, and the request will continue as normal. This can be used as
+  a standalone function if you want to log a curl command without using the middleware.
+  """
+  @spec log(Tesla.Env.t(), keyword() | nil) :: :ok
+  def log(env, opts) do
     try do
       construct_curl(env, opts)
-      |> log(opts)
+      |> do_log(opts)
     rescue
       e ->
         Logger.error(Exception.format(:error, e, __STACKTRACE__))
     end
-
-    env
   end
 
   # Logs request as :info, or as the level specified in the opts
   # Must be one of -
   # :emergency, :alert, :critical, :error, :warning, :notice, :info, :debug
-  @spec log(String.t(), keyword() | nil) :: :ok
-  defp log(curl_request, nil), do: Logger.info(curl_request)
+  @spec do_log(String.t(), keyword() | nil) :: :ok
+  defp do_log(curl_request, nil), do: Logger.info(curl_request)
 
-  defp log(curl_request, opts) do
+  defp do_log(curl_request, opts) do
     with {:ok, logger_level} <- Keyword.fetch(opts, :logger_level) do
       Logger.log(logger_level, curl_request)
     else
-      _ -> Logger.info(curl_request)
+      _ ->
+        Logger.info(curl_request)
     end
   end
 
