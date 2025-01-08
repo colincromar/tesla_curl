@@ -472,18 +472,18 @@ defmodule Tesla.Middleware.CurlTest do
   describe "log/2" do
     test "parses the request, logs it, and returns :ok" do
       assert capture_log(fn ->
-        env = %Tesla.Env{
-          method: :post,
-          url: "https://example.com",
-          headers: [{:Authorization, "some_token"}],
-          body: %{foo: "bar"}
-        }
+               env = %Tesla.Env{
+                 method: :post,
+                 url: "https://example.com",
+                 headers: [{:Authorization, "some_token"}],
+                 body: %{foo: "bar"}
+               }
 
-        options = [redact_fields: ["authorization", "Foo"]]
+               options = [redact_fields: ["authorization", "Foo"]]
 
-        Tesla.Middleware.Curl.log(env, options)
-      end) =~
-        "[info] curl -X POST --header 'Authorization: REDACTED' --data 'foo=REDACTED' 'https://example.com'"
+               Tesla.Middleware.Curl.log(env, options)
+             end) =~
+               "[info] curl -X POST --header 'Authorization: REDACTED' --data 'foo=REDACTED' 'https://example.com'"
     end
 
     test "logs error and returns :ok" do
