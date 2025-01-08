@@ -7,13 +7,14 @@ The package can be installed by adding `tesla_curl` to your list of dependencies
 ```elixir
 def deps do
   [
-    {:tesla_curl, "~> 1.3.0"}
+    {:tesla_curl, "~> 1.3.1"}
   ]
 end
 ```
 
 ## Usage
 
+### As a middleware with Plug:
 ```elixir
 defmodule HelloWorld do
   use Tesla
@@ -24,6 +25,17 @@ end
 
 Note - Plugs are executed in the order they are defined. As such, it is recommended you define TeslaCurl below other middlewares.
 For example, if the TeslaCurl plug is defined above the Headers middleware, headers will not be included in the curl log output.
+
+### Without Plug:
+If you prefer to use this library without the plug, you can use the `TeslaCurl` module directly with `log/2`:
+
+```elixir
+defmodule HelloWorld do
+  def foo(Tesla.Env{} = env, opts \\ []) do
+    Tesla.Middleware.Curl.log(env, opts)
+  end
+end
+```
 
 ## Options
 
