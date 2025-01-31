@@ -64,25 +64,9 @@ plug Tesla.Middleware.Curl, redact_fields: ["api_token", "authorization", "passw
 
 Sensitive values will be replaced with `REDACTED` in the generated cURL command.
 
-If the request body is a string (e.g., XML or JSON), you can redact values using regular expressions with capture groups:
+##### Using Regex Captures for Redaction
 
-Example:
-
-```elixir
-redact_fields: [~r{<password>(.*?)</password>}]
-```
-
-For a request body like:
-
-```xml
-  "<username>John Doe</username><password>horse battery staple</password>"
-```
-
-The logged output would be:
-
-```xml
-"<username>John Doe</username><password>REDACTED</password>"
-```
+If the request body is a string (e.g., XML or JSON), you can redact values using regular expressions with capture groups, for example, supplying `redact_fields: [~r{<password>(.*?)</password>}]` will result in `"<username>John Doe</username><password>REDACTED</password>"`
 
 #### Follow Redirects
 
@@ -96,16 +80,6 @@ For compressed responses, you can supply the `compressed: true` option. This wil
 
 You can supply the `logger_level` option to set the level of the logger. The default is `:info`. Must be one of `:debug`, `:info`, `:warn`, `:error`, `:fatal`, `:none`.
 
-Here is an example of options configuration with all options enabled:
-
-
-```elixir
-plug Tesla.Middleware.Curl,
-  follow_redirects: true,
-  redact_fields: ["api_token", "authorization", "password"],
-  compressed: true,
-  logger_level: :debug
-```
 
 ## Best Practices
 - **Avoid Logging Sensitive Data:** Always use redact_fields in production to prevent exposing secrets.
