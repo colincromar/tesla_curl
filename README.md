@@ -7,7 +7,8 @@ The package can be installed by adding `tesla_curl` to your list of dependencies
 ```elixir
 def deps do
   [
-    {:tesla_curl, "~> 1.3.1"}
+    {:tesla, "~> 1.13"},
+    {:tesla_curl, "~> 1.3.1", only: [:dev, :test]}
   ]
 end
 ```
@@ -15,18 +16,32 @@ end
 ## Usage
 
 #### As a middleware with Plug:
+You can use TeslaCurl as a middleware with Plug to automatically log cURL commands for each request:
+
 ```elixir
 defmodule HelloWorld do
   use Tesla
 
-  plug Tesla.Middleware.Curl
+  plug Tesla.Middleware.Headers
+  plug Tesla.Middleware.JSON
+  plug Tesla.Middleware.Curl, logger_level: :debug, redact_fields: ["authorization"]
 end
 ```
 
-Note - Plugs are executed in the order they are defined. As such, it is recommended you define TeslaCurl below other middlewares.
-For example, if the TeslaCurl plug is defined above the Headers middleware, headers will not be included in the curl log output.
+Tesla executes middlewares in order, meaning Tesla.Middleware.Curl should come after other middlewares that
+modify the request or response. For example, if you are using Tesla.Middleware.Headers and Tesla.Middleware.JSON:
 
-#### Without Plug:
+```elixir
+plug Tesla.Middleware.Headers
+plug Tesla.Middleware.JSON
+plug Tesla.Middleware.Curl  # Correct order
+
+plug Tesla.Middleware.Curl
+plug Tesla.Middleware.Headers
+plug Tesla.Middleware.JSON  # Incorrect order (won’t log JSON encoding or supply headers to the Curl middleware)
+```
+
+#### Use without Plug:
 If you prefer to use this library without the plug, you can use the `TeslaCurl` module directly with `log/2`:
 
 ```elixir
@@ -37,24 +52,21 @@ defmodule HelloWorld do
 end
 ```
 
-## Options
+## Configuration Options
 
 #### Field Redaction
 
-You can pass a list of header keys or body field keys to be redacted in the options, like so: 
-`redact_fields: ["api_token", "authorization", "password"]`
+To prevent sensitive information from being logged, use redact_fields to specify headers or body fields that should be redacted:
 
-If supplied, the redacted fields will be replaced with `REDACTED` in the curl command.
-
-If a request's body is a string, you can use a regular expression with a capture group to redact the field. For example, if
-you were supplying Tesla with a string body that looked like this- 
-
-```xml
-"<username>John Doe</username><password>horse battery staple</password>"
+```elixir
+plug Tesla.Middleware.Curl, redact_fields: ["api_token", "authorization", "password"]
 ```
 
-You could redact the password field by supplying the following option- `redact_fields: [~r{<password>(.*?)</password>}]`. This field 
-will be replaced with `<password>REDACTED</password>` in the curl command.
+Sensitive values will be replaced with `REDACTED` in the generated cURL command.
+
+##### Using Regex Captures for Redaction
+
+If the request body is a string (e.g., XML or JSON), you can redact values using regular expressions with capture groups, for example, supplying `redact_fields: [~r{<password>(.*?)</password>}]` will result in `"<username>John Doe</username><password>REDACTED</password>"`
 
 #### Follow Redirects
 
@@ -68,12 +80,12 @@ For compressed responses, you can supply the `compressed: true` option. This wil
 
 You can supply the `logger_level` option to set the level of the logger. The default is `:info`. Must be one of `:debug`, `:info`, `:warn`, `:error`, `:fatal`, `:none`.
 
-Here is an example of options configuration with all options enabled:
 
-
-```elixir
-plug Tesla.Middleware.Curl, follow_redirects: true, redact_fields: ["api_token", "authorization", "password"], compressed: true, logger_level: :debug
-```
+## Best Practices
+- **Avoid Logging Sensitive Data:** Always use redact_fields in production to prevent exposing secrets.
+- **Use in Development & Debugging:** Consider enabling TeslaCurl only in non-production environments.
+- **Define Middleware Order Correctly:** Ensure the definition for `plug Tesla.Middleware.Curl` is placed after
+`plug Tesla.Middleware.Headers` and `plug Tesla.Middleware.JSON`.
 
 ## License
 
