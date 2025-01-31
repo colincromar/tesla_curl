@@ -29,7 +29,7 @@ end
 ```
 
 Tesla executes middlewares in order, meaning Tesla.Middleware.Curl should come after other middlewares that
-modify the request or response. For example, if you are using Tesla.Middleware.Headers and Tesla.Middleware.JSON-
+modify the request or response. For example, if you are using Tesla.Middleware.Headers and Tesla.Middleware.JSON:
 
 ```elixir
 plug Tesla.Middleware.Headers
