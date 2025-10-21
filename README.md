@@ -7,7 +7,7 @@ The package can be installed by adding `tesla_curl` to your list of dependencies
 ```elixir
 def deps do
   [
-    {:tesla, "~> 1.13"},
+    {:tesla, "~> 1.15"},
     {:tesla_curl, "~> 1.3.1", only: [:dev, :test]}
   ]
 end
@@ -15,38 +15,57 @@ end
 
 ## Usage
 
-#### As a middleware with Plug:
-You can use TeslaCurl as a middleware with Plug to automatically log cURL commands for each request:
+#### As a middleware:
+You can use TeslaCurl as a middleware to automatically log cURL commands for each request:
 
 ```elixir
 defmodule HelloWorld do
-  use Tesla
+  def middleware do
+    [
+      Tesla.Middleware.Headers,
+      Tesla.Middleware.JSON,
+      {Tesla.Middleware.Curl, logger_level: :debug, redact_fields: ["authorization"]}
+    ]
+  end
 
-  plug Tesla.Middleware.Headers
-  plug Tesla.Middleware.JSON
-  plug Tesla.Middleware.Curl, logger_level: :debug, redact_fields: ["authorization"]
+  def client do
+    Tesla.client(middleware())
+  end
+
+  def get_data(path) do
+    Tesla.get(client(), path)
+  end
 end
 ```
 
-Tesla executes middlewares in order, meaning Tesla.Middleware.Curl should come after other middlewares that
-modify the request or response. For example, if you are using Tesla.Middleware.Headers and Tesla.Middleware.JSON:
+Tesla executes middlewares in list order for requests (top-to-bottom), meaning Tesla.Middleware.Curl should come after other middlewares that modify the request. For example, if you are using Tesla.Middleware.Headers and Tesla.Middleware.JSON:
 
 ```elixir
-plug Tesla.Middleware.Headers
-plug Tesla.Middleware.JSON
-plug Tesla.Middleware.Curl  # Correct order
+# Correct order - Curl logs the final request with headers and JSON encoding
+def middleware do
+  [
+    Tesla.Middleware.Headers,
+    Tesla.Middleware.JSON,
+    Tesla.Middleware.Curl
+  ]
+end
 
-plug Tesla.Middleware.Curl
-plug Tesla.Middleware.Headers
-plug Tesla.Middleware.JSON  # Incorrect order (won’t log JSON encoding or supply headers to the Curl middleware)
+# Incorrect order - Curl won't see JSON encoding or headers
+def middleware do
+  [
+    Tesla.Middleware.Curl,
+    Tesla.Middleware.Headers,
+    Tesla.Middleware.JSON
+  ]
+end
 ```
 
-#### Use without Plug:
-If you prefer to use this library without the plug, you can use the `TeslaCurl` module directly with `log/2`:
+#### Standalone usage:
+You can also use the `TeslaCurl` module directly with `log/2` without configuring it as middleware:
 
 ```elixir
 defmodule HelloWorld do
-  def foo(Tesla.Env{} = env, opts \\ []) do
+  def foo(%Tesla.Env{} = env, opts \\ []) do
     Tesla.Middleware.Curl.log(env, opts)
   end
 end
@@ -59,7 +78,7 @@ end
 To prevent sensitive information from being logged, use redact_fields to specify headers or body fields that should be redacted:
 
 ```elixir
-plug Tesla.Middleware.Curl, redact_fields: ["api_token", "authorization", "password"]
+{Tesla.Middleware.Curl, redact_fields: ["api_token", "authorization", "password"]}
 ```
 
 Sensitive values will be replaced with `REDACTED` in the generated cURL command.
@@ -84,8 +103,7 @@ You can supply the `logger_level` option to set the level of the logger. The def
 ## Best Practices
 - **Avoid Logging Sensitive Data:** Always use redact_fields in production to prevent exposing secrets.
 - **Use in Development & Debugging:** Consider enabling TeslaCurl only in non-production environments.
-- **Define Middleware Order Correctly:** Ensure the definition for `plug Tesla.Middleware.Curl` is placed after
-`plug Tesla.Middleware.Headers` and `plug Tesla.Middleware.JSON`.
+- **Define Middleware Order Correctly:** Place `Tesla.Middleware.Curl` after other middlewares that modify the request (like `Tesla.Middleware.Headers` and `Tesla.Middleware.JSON`) to ensure it logs the final request state.
 
 ## License
 

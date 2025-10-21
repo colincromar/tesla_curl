@@ -37,3 +37,6 @@ tesla_curl-*.tar
 
 # Ignore apple file system metadata
 *.DS_Store
+
+# Ignore Claude files
+.CLAUDE.md
