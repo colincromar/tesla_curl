@@ -3,6 +3,11 @@ defmodule Tesla.Middleware.CurlTest do
 
   import ExUnit.CaptureLog
 
+  alias Tesla.Env
+  alias Tesla.Middleware.Curl
+  alias Tesla.Multipart
+  alias Tesla.Multipart.Part
+
   @base_url "https://example.com"
   @auth_header {"Authorization", "Bearer 123"}
   @json_headers [@auth_header | [{"Content-Type", "application/json"}]]
@@ -10,7 +15,7 @@ defmodule Tesla.Middleware.CurlTest do
   @multipart_headers [@auth_header | [{"Content-Type", "multipart/form-data"}]]
 
   defp build_env(method, url, headers \\ [], body \\ nil, query \\ []) do
-    %Tesla.Env{
+    %Env{
       method: method,
       url: url,
       headers: headers,
@@ -20,27 +25,27 @@ defmodule Tesla.Middleware.CurlTest do
   end
 
   defp call_middleware(env, opts \\ []) do
-    Tesla.Middleware.Curl.call(env, [], opts)
+    Curl.call(env, [], opts)
   end
 
   defp assert_curl_log(env, opts, expected_log) do
     assert capture_log(fn -> call_middleware(env, opts) end) =~ expected_log
   end
 
-  defp multipart_body() do
-    %Tesla.Multipart{
+  defp multipart_body do
+    %Multipart{
       parts: [
-        %Tesla.Multipart.Part{body: "foo", dispositions: [name: "field1"]},
-        %Tesla.Multipart.Part{
+        %Part{body: "foo", dispositions: [name: "field1"]},
+        %Part{
           body: "bar",
           dispositions: [name: "field2"],
           headers: [{"content-id", "1"}]
         },
-        %Tesla.Multipart.Part{
+        %Part{
           body: %File.Stream{path: "test/tesla/tesla_curl_test.exs", modes: [:raw]},
           dispositions: [name: "file", filename: "tesla_curl_test.exs"]
         },
-        %Tesla.Multipart.Part{
+        %Part{
           body: %File.Stream{path: "test/tesla/test_helper.exs", modes: [:raw]},
           dispositions: [name: "foobar", filename: "test_helper.exs"]
         }
@@ -163,7 +168,7 @@ defmodule Tesla.Middleware.CurlTest do
   describe "log/2" do
     test "parses the request, logs it, and returns :ok" do
       assert capture_log(fn ->
-               env = %Tesla.Env{
+               env = %Env{
                  method: :post,
                  url: "https://example.com",
                  headers: [{:Authorization, "some_token"}],
@@ -172,13 +177,13 @@ defmodule Tesla.Middleware.CurlTest do
 
                options = [redact_fields: ["authorization", "Foo"]]
 
-               Tesla.Middleware.Curl.log(env, options)
+               Curl.log(env, options)
              end) =~
                "[info] curl -X POST --header 'Authorization: REDACTED' --data 'foo=REDACTED' 'https://example.com'"
     end
 
     test "logs error and returns :ok" do
-      env = %Tesla.Env{
+      env = %Env{
         method: :post,
         url: [%{something_invalid: "and a value"}],
         headers: [],
@@ -186,11 +191,11 @@ defmodule Tesla.Middleware.CurlTest do
       }
 
       capture_log(fn ->
-        assert :ok = Tesla.Middleware.Curl.log(env, [])
+        assert :ok = Curl.log(env, [])
       end)
 
       assert capture_log(fn ->
-               Tesla.Middleware.Curl.log(env, [])
+               Curl.log(env, [])
              end) =~
                "[error] ** (ArgumentError) cannot convert the given list to a string."
     end

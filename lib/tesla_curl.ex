@@ -58,13 +58,11 @@ defmodule Tesla.Middleware.Curl do
   """
   @spec log(Tesla.Env.t(), keyword() | nil) :: :ok
   def log(env, opts) do
-    try do
-      construct_curl(env, opts)
-      |> do_log(opts)
-    rescue
-      e ->
-        Logger.error(Exception.format(:error, e, __STACKTRACE__))
-    end
+    construct_curl(env, opts)
+    |> do_log(opts)
+  rescue
+    e ->
+      Logger.error(Exception.format(:error, e, __STACKTRACE__))
   end
 
   # Logs request as :info, or as the level specified in the opts
@@ -74,9 +72,10 @@ defmodule Tesla.Middleware.Curl do
   defp do_log(curl_request, nil), do: Logger.info(curl_request)
 
   defp do_log(curl_request, opts) do
-    with {:ok, logger_level} <- Keyword.fetch(opts, :logger_level) do
-      Logger.log(logger_level, curl_request)
-    else
+    case Keyword.fetch(opts, :logger_level) do
+      {:ok, logger_level} ->
+        Logger.log(logger_level, curl_request)
+
       _ ->
         Logger.info(curl_request)
     end
@@ -101,12 +100,14 @@ defmodule Tesla.Middleware.Curl do
     body = env.body
 
     sanitized_body =
-      with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-        Enum.reduce(redact_fields, body, fn field, acc ->
-          filter_string_body(field, acc)
-        end)
-      else
-        _ -> body
+      case Keyword.fetch(opts, :redact_fields) do
+        {:ok, redact_fields} ->
+          Enum.reduce(redact_fields, body, fn field, acc ->
+            filter_string_body(field, acc)
+          end)
+
+        _ ->
+          body
       end
 
     query_params = format_query_params(env.query)
@@ -131,7 +132,7 @@ defmodule Tesla.Middleware.Curl do
   end
 
   # Parses the body parts of multipart requests into Curl format.
-  @spec parse_part(%Tesla.Multipart.Part{}) :: String.t()
+  @spec parse_part(Tesla.Multipart.Part.t()) :: String.t()
   defp parse_part(%Tesla.Multipart.Part{
          dispositions: [{_, field} | _],
          body: %File.Stream{path: path}
@@ -149,10 +150,9 @@ defmodule Tesla.Middleware.Curl do
   defp parse_headers([], _opts), do: ""
 
   defp parse_headers(headers, opts) do
-    Enum.map(headers, fn {k, v} ->
+    Enum.map_join(headers, " ", fn {k, v} ->
       construct_header(k, maybe_redact_field(k, v, opts))
     end)
-    |> Enum.join(" ")
     |> Kernel.<>(" ")
   end
 
@@ -179,22 +179,26 @@ defmodule Tesla.Middleware.Curl do
   defp sanitize_query_params(query_params, nil), do: query_params
 
   defp sanitize_query_params(query_params, opts) when is_map(query_params) do
-    with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      Enum.reduce(redact_fields, query_params, fn field, acc ->
-        query_param_redact_for_map(field, acc)
-      end)
-    else
-      _ -> query_params
+    case Keyword.fetch(opts, :redact_fields) do
+      {:ok, redact_fields} ->
+        Enum.reduce(redact_fields, query_params, fn field, acc ->
+          query_param_redact_for_map(field, acc)
+        end)
+
+      _ ->
+        query_params
     end
   end
 
   defp sanitize_query_params(query_params, opts) when is_list(query_params) do
-    with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      Enum.reduce(redact_fields, query_params, fn field, acc ->
-        query_param_redact_for_list(field, acc)
-      end)
-    else
-      _ -> query_params
+    case Keyword.fetch(opts, :redact_fields) do
+      {:ok, redact_fields} ->
+        Enum.reduce(redact_fields, query_params, fn field, acc ->
+          query_param_redact_for_list(field, acc)
+        end)
+
+      _ ->
+        query_params
     end
   end
 
@@ -326,18 +330,20 @@ defmodule Tesla.Middleware.Curl do
   defp maybe_redact_field(_key, value, nil), do: value
 
   defp maybe_redact_field(key, value, opts) do
-    with {:ok, redact_fields} <- Keyword.fetch(opts, :redact_fields) do
-      needs_redaction =
-        Enum.any?(redact_fields, fn field ->
-          needs_redact?(field, key)
-        end)
+    case Keyword.fetch(opts, :redact_fields) do
+      {:ok, redact_fields} ->
+        needs_redaction =
+          Enum.any?(redact_fields, fn field ->
+            needs_redact?(field, key)
+          end)
 
-      case needs_redaction do
-        true -> "REDACTED"
-        false -> value
-      end
-    else
-      _ -> value
+        case needs_redaction do
+          true -> "REDACTED"
+          false -> value
+        end
+
+      _ ->
+        value
     end
   end
 
@@ -411,10 +417,12 @@ defmodule Tesla.Middleware.Curl do
   defp location_flag(nil), do: ""
 
   defp location_flag(opts) do
-    with {:ok, follow_redirects} <- Keyword.fetch(opts, :follow_redirects) do
-      (follow_redirects == true) |> set_location_flag()
-    else
-      _ -> ""
+    case Keyword.fetch(opts, :follow_redirects) do
+      {:ok, follow_redirects} ->
+        (follow_redirects == true) |> set_location_flag()
+
+      _ ->
+        ""
     end
   end
 
