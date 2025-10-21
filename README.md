@@ -8,7 +8,7 @@ The package can be installed by adding `tesla_curl` to your list of dependencies
 def deps do
   [
     {:tesla, "~> 1.15"},
-    {:tesla_curl, "~> 1.3.1", only: [:dev, :test]}
+    {:tesla_curl, "~> 1.4", only: [:dev, :test]}
   ]
 end
 ```
@@ -38,7 +38,9 @@ defmodule HelloWorld do
 end
 ```
 
-Tesla executes middlewares in list order for requests (top-to-bottom), meaning Tesla.Middleware.Curl should come after other middlewares that modify the request. For example, if you are using Tesla.Middleware.Headers and Tesla.Middleware.JSON:
+Tesla executes middlewares in list order for requests (top-to-bottom), meaning Tesla.Middleware.Curl should
+come after other middlewares that modify the request. For example, if you are using Tesla.Middleware.Headers
+and Tesla.Middleware.JSON:
 
 ```elixir
 # Correct order - Curl logs the final request with headers and JSON encoding
@@ -85,7 +87,8 @@ Sensitive values will be replaced with `REDACTED` in the generated cURL command.
 
 ##### Using Regex Captures for Redaction
 
-If the request body is a string (e.g., XML or JSON), you can redact values using regular expressions with capture groups, for example, supplying `redact_fields: [~r{<password>(.*?)</password>}]` will result in `"<username>John Doe</username><password>REDACTED</password>"`
+If the request body is a string (e.g., XML or JSON), you can redact values using regular expressions with capture groups, for example,
+supplying `redact_fields: [~r{<password>(.*?)</password>}]` will result in `"<username>John Doe</username><password>REDACTED</password>"`
 
 #### Follow Redirects
 
@@ -103,7 +106,8 @@ You can supply the `logger_level` option to set the level of the logger. The def
 ## Best Practices
 - **Avoid Logging Sensitive Data:** Always use redact_fields in production to prevent exposing secrets.
 - **Use in Development & Debugging:** Consider enabling TeslaCurl only in non-production environments.
-- **Define Middleware Order Correctly:** Place `Tesla.Middleware.Curl` after other middlewares that modify the request (like `Tesla.Middleware.Headers` and `Tesla.Middleware.JSON`) to ensure it logs the final request state.
+- **Define Middleware Order Correctly:** Place `Tesla.Middleware.Curl` after other middlewares that modify the request
+(like `Tesla.Middleware.Headers` and `Tesla.Middleware.JSON`) to ensure it logs the final request state.
 
 ## License
 
