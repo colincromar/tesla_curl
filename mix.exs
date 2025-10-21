@@ -15,7 +15,7 @@ defmodule TeslaCurl.MixProject do
       ],
       description: "A middleware for the Tesla HTTP client that logs requests expressed in Curl",
       dialyzer: dialyzer(),
-      elixir: "~> 1.14",
+      elixir: "~> 1.18",
       name: "TeslaCurl",
       package: package(),
       project_url: @project_url,
