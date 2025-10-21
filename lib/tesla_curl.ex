@@ -9,9 +9,20 @@ defmodule Tesla.Middleware.Curl do
 
   ```
   defmodule MyClient do
-    use Tesla
+    def middleware do
+      [
+        {Tesla.Middleware.Curl, follow_redirects: true, redact_fields: ["api_token", "authorization"]},
+        Tesla.Middleware.JSON
+      ]
+    end
 
-    plug Tesla.Middleware.Curl, follow_redirects: true, redact_fields: ["api_token", "authorization"]
+    def client do
+      Tesla.client(middleware())
+    end
+
+    def get_user(id) do
+      Tesla.get(client(), "/users/\#{id}")
+    end
   end
   ```
 

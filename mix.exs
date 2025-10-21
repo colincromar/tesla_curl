@@ -21,7 +21,7 @@ defmodule TeslaCurl.MixProject do
       project_url: @project_url,
       start_permanent: Mix.env() == :prod,
       source_url: @project_url,
-      version: "1.3.1"
+      version: "1.4.0"
     ]
   end
 
@@ -38,7 +38,7 @@ defmodule TeslaCurl.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
       {:ex_doc, ">= 0.0.0", only: [:dev], runtime: false},
-      {:tesla, "~> 1.4"}
+      {:tesla, "~> 1.15"}
     ]
   end
 
